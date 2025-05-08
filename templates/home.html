@@ -1,0 +1,80 @@
+{% load static %} <!-- Load the static template tag for referencing static files -->
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            #blue_bar {
+                height: 60px;
+                background-color: #405d9b; /* Corrected color code format */
+                color: #d9dfeb; /* Corrected color code format */
+                width: 800px;
+                border-radius: 4px;
+                font-size: x-large;
+            }
+            #search_box {
+                height: 20px;
+                background-color: white;
+                color: black;
+                width: 300px;
+                border-radius: 8px;
+                border: solid 1px #aaa;
+                margin: auto;
+                font-size: 30px; /* Corrected font-size */
+                font-style: normal;
+                padding: 8px;
+                background-image: url("{% static 'images/searchicon2.jpg' %}"); /* Use static tag for image */
+                background-repeat: no-repeat;
+                background-position: right;
+            }
+            #profile_pic {
+                height: 200px;
+                border-radius: 50%;
+                margin-top: -500px;
+                width: 300px;
+                border: solid 2px white;
+            }
+            #profile_pic2 {
+                height: 150px;
+                border-radius: 50%;
+                margin-top: -150px;
+                border: solid 2px white;
+            }
+            #menu_buttons {
+                width: 100px;
+                display: inline-block;
+                border-radius: 20%;
+                margin: 2px;
+            }
+        </style>
+    </head>
+    <body style="font-family: Tahoma; background-color: #d0d8e4;"> <!-- Corrected background color format -->
+        <br>
+        <div id="blue_bar">
+            <marquee>Ezzy Website</marquee> Profile Design
+        </div>
+        <div>
+            <input type="text" id="search_box" placeholder="Search">
+        </div>
+        <img src="{% static 'images/mmil.jpg' %}" alt="Image" style="width: 100px; float: right;"> <!-- Use static tag for image -->
+
+        <div style="width: 800px; margin: auto; border: auto; min-height: 450px;">
+            <div style="background-color: white; text-align: center; color: #405d9b; min-height: 450px;">
+                <img src="{% static 'images/house.jpg' %}" style="width: 100%; height: 400px;"><br> <!-- Use static tag for image -->
+                <img src="{% static 'images/OIF.jpg' %}" id="profile_pic"><br> <!-- Use static tag for image -->
+                <img src="{% static 'images/captain_marvel.jpg' %}" id="profile_pic2"><br> <!-- Use static tag for image -->
+                <div style="font-size: 20px;">EZRA BONPHASE<br></div>
+                <div id="menu_buttons">Timeline</div>
+                <div id="menu_buttons">Friends</div>
+                <div id="menu_buttons">Photos</div>
+                <div id="menu_buttons">About</div>
+                <div id="menu_buttons">Settings</div>
+            </div>
+        </div>
+
+        <div style="display: flex;">
+            <div style="min-height: 400px; flex: 1;"></div>
+            <div style="min-height: 400px; flex: 2.5;"></div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,14 @@
+<!-- Login page template -->
+<h2>Login</h2>
+
+<!-- Display login form errors if any -->
+{% if form.errors %}
+  <p style="color:red;">Invalid credentials</p>
+{% endif %}
+
+<!-- Login form -->
+<form method="post">
+  {% csrf_token %}           <!-- CSRF token for security -->
+  {{ form.as_p }}            <!-- Render form fields as paragraphs -->
+  <button type="submit">Login</button>
+</form>

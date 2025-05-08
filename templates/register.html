@@ -1,0 +1,7 @@
+<!-- calc/templates/register.html -->
+<h2>Register</h2>
+<form method="post">  <!-- Form submission using POST method -->
+    {% csrf_token %}  <!-- CSRF token for security -->
+    {{ form.as_p }}  <!-- Render form fields as paragraphs -->
+    <button type="submit">Sign Up</button>
+</form>
