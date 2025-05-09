@@ -1,27 +1,28 @@
-from django.urls import path                             # Import path to define URL patterns
-from django.contrib.auth import views as auth_views      # Import Django's built-in authentication views
-from . import views                                       # Import views from the current app (calc)
+# calc/urls.py
+
+# Import path to define URL routes
+from django.urls import path
+
+# Import Django's built-in authentication views for login/logout
+from django.contrib.auth import views as auth_views
+
+# Import views from the current app (calc)
+from . import views
+
+# Define all URL patterns in ONE list to avoid overwriting
 urlpatterns = [
-    path('', views.home, name='home'),                   # Home page view, accessible at the root URL (e.g. /)
-    
-    # Login view using Django's built-in LoginView
-    # Will look for a template named login.html
-    path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
-    
-    # Logout view using Django's built-in LogoutView
+    # Home page route — shown at http://127.0.0.1:8000/
+    path('', views.home, name='home'),
+
+    # Login route — renders login.html template
+    path('login/', auth_views.LoginView.as_view(template_name='calc/login.html'), name='login'),
+
+    # Logout route — logs the user out and redirects
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
-]
-# calc/urls.py
-from django.urls import path
-from . import views  # Import views from the current app
 
-urlpatterns = [
-    path('register/', views.register, name='register'),  # Register route
-]
-# calc/urls.py
-from django.urls import path
-from . import views  # Import views from the current app
+    # Registration page — user sign-up form
+    path('register/', views.register, name='register'),
 
-urlpatterns = [
-    path('dashboard/', views.dashboard, name='dashboard'),  # Dashboard route, only accessible by logged-in users
+    # Dashboard route — only accessible after login
+    path('dashboard/', views.dashboard, name='dashboard'),
 ]
