@@ -28,5 +28,6 @@ urlpatterns = [
     
      # base.html route — renders base.html template
     path('base/', views.base, name='base'),
-   
+  path('', views.index, name='index'),  
+  
 ]

@@ -1,3 +1,5 @@
+import dj_database_url
+import os
 from decouple import config  # 🔑 Allows you to load secrets and environment variables from .env
 from pathlib import Path
 
@@ -5,9 +7,9 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = config('SECRET_KEY')  
-DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+SECRET_KEY = config('SECRET_KEY')  # Secret key for your Django app
+DEBUG = config('DEBUG', default=True, cast=bool)  # Whether the app is in debug mode
+ALLOWED_HOSTS = ['*']  # Or use your specific render domain e.g., ['your-app-name.onrender.com']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -21,6 +23,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise goes right after SecurityMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -34,8 +37,7 @@ ROOT_URLCONF = 'alpha.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],# No global template directory, so leave it empty (optional)
-  
+        'DIRS': [],  # No global template directory, so leave it empty (optional)
         'APP_DIRS': True,  # This tells Django to look in app-specific 'templates' directories
         'OPTIONS': {
             'context_processors': [
@@ -48,16 +50,19 @@ TEMPLATES = [
     },
 ]
 
-
 WSGI_APPLICATION = 'alpha.wsgi.application'
 
+# Database configuration
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL', cast=str),  # Fetch DATABASE_URL from .env or environment variable
+        conn_max_age=600,  # Keep database connections open for up to 10 minutes
+        ssl_require=True if config('DATABASE_URL', default='').startswith('postgres') else False,  # Only enable SSL for PostgreSQL
+    
+    )
 }
 
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -73,12 +78,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Language and timezone settings
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Static files (CSS, JavaScript, images)
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # Directory for collected static files
+
+# Directory where static files will be collected for production (only set once)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Correct way for production
+
+# Storage engine for serving static files efficiently with WhiteNoise
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
