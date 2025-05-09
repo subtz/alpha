@@ -1,80 +1,110 @@
-{% load static %} <!-- Load the static template tag for referencing static files -->
 
-<!DOCTYPE html>
-<html>
-    <head>
-        <style>
-            #blue_bar {
-                height: 60px;
-                background-color: #405d9b; /* Corrected color code format */
-                color: #d9dfeb; /* Corrected color code format */
-                width: 800px;
-                border-radius: 4px;
-                font-size: x-large;
-            }
-            #search_box {
-                height: 20px;
-                background-color: white;
-                color: black;
-                width: 300px;
-                border-radius: 8px;
-                border: solid 1px #aaa;
-                margin: auto;
-                font-size: 30px; /* Corrected font-size */
-                font-style: normal;
-                padding: 8px;
-                background-image: url("{% static 'images/searchicon2.jpg' %}"); /* Use static tag for image */
-                background-repeat: no-repeat;
-                background-position: right;
-            }
-            #profile_pic {
-                height: 200px;
-                border-radius: 50%;
-                margin-top: -500px;
-                width: 300px;
-                border: solid 2px white;
-            }
-            #profile_pic2 {
-                height: 150px;
-                border-radius: 50%;
-                margin-top: -150px;
-                border: solid 2px white;
-            }
-            #menu_buttons {
-                width: 100px;
-                display: inline-block;
-                border-radius: 20%;
-                margin: 2px;
-            }
-        </style>
-    </head>
-    <body style="font-family: Tahoma; background-color: #d0d8e4;"> <!-- Corrected background color format -->
-        <br>
-        <div id="blue_bar">
-            <marquee>Ezzy Website</marquee> Profile Design
-        </div>
-        <div>
-            <input type="text" id="search_box" placeholder="Search">
-        </div>
-        <img src="{% static 'images/mmil.jpg' %}" alt="Image" style="width: 100px; float: right;"> <!-- Use static tag for image -->
+{% load static %}
 
-        <div style="width: 800px; margin: auto; border: auto; min-height: 450px;">
-            <div style="background-color: white; text-align: center; color: #405d9b; min-height: 450px;">
-                <img src="{% static 'images/house.jpg' %}" style="width: 100%; height: 400px;"><br> <!-- Use static tag for image -->
-                <img src="{% static 'images/OIF.jpg' %}" id="profile_pic"><br> <!-- Use static tag for image -->
-                <img src="{% static 'images/captain_marvel.jpg' %}" id="profile_pic2"><br> <!-- Use static tag for image -->
-                <div style="font-size: 20px;">EZRA BONPHASE<br></div>
-                <div id="menu_buttons">Timeline</div>
-                <div id="menu_buttons">Friends</div>
-                <div id="menu_buttons">Photos</div>
-                <div id="menu_buttons">About</div>
-                <div id="menu_buttons">Settings</div>
+{% block head %}
+<!-- Page-specific CSS -->
+<style>
+    #blue_bar {
+        height: 60px;
+        background-color: #405d9b;
+        color: #d9dfeb;
+        font-size: x-large;
+        border-radius: 4px;
+        text-align: center;
+        padding: 10px 0;
+        margin-bottom: 20px;
+    }
+
+    #search_box {
+        height: 40px;
+        background-color: white;
+        color: black;
+        width: 100%;
+        max-width: 400px;
+        border-radius: 8px;
+        border: solid 1px #aaa;
+        font-size: 16px;
+        padding: 8px 12px;
+        background-image: url("{% static 'calc/images/searchicon2.jpg' %}");
+        background-repeat: no-repeat;
+        background-position: right center;
+        background-size: 20px;
+        margin: auto;
+        display: block;
+    }
+
+    #profile_pic, #profile_pic2 {
+        border-radius: 50%;
+        border: 2px solid white;
+    }
+
+    #profile_pic {
+        height: 200px;
+        width: 200px;
+        margin-top: -100px;
+    }
+
+    #profile_pic2 {
+        height: 150px;
+        width: 150px;
+    }
+
+    #menu_buttons {
+        display: inline-block;
+        padding: 10px 15px;
+        background-color: #f0f0f0;
+        border-radius: 20px;
+        margin: 5px;
+        font-weight: bold;
+        color: #405d9b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Profile Header with Title -->
+<div class="container">
+    <div id="blue_bar">
+        <marquee>Ezzy Website</marquee> Profile Design
+    </div>
+
+    <!-- Search bar -->
+    <input type="text" id="search_box" placeholder="Search">
+
+    <!-- Right-floating image (e.g., logo or avatar) -->
+    <img src="{% static 'calc/images/mmil.jpg' %}" alt="Profile Icon" style="width: 100px; float: right; margin-top: -60px;">
+
+    <!-- Profile Content -->
+    <div class="mx-auto" style="max-width: 800px;">
+        <div class="text-center bg-white p-3 shadow-sm rounded">
+
+            <!-- Cover Image -->
+            <img src="{% static 'calc/images/house.jpg' %}" class="img-fluid mb-3" style="height: 300px; object-fit: cover; width: 100%;" alt="Cover">
+
+            <!-- Main Profile Picture -->
+            <img src="{% static 'calc/images/OIF.jpg' %}" id="profile_pic" class="mb-3" alt="Main Profile">
+
+            <!-- Secondary Profile Picture -->
+            <img src="{% static 'calc/images/captain_marvel.jpg' %}" id="profile_pic2" class="mb-3" alt="Secondary Profile">
+
+            <!-- Profile Info -->
+            <div style="font-size: 20px;">EZRA BONPHASE</div>
+
+            <!-- Menu Buttons -->
+            <div class="mt-3">
+                <span id="menu_buttons">Timeline</span>
+                <span id="menu_buttons">Friends</span>
+                <span id="menu_buttons">Photos</span>
+                <span id="menu_buttons">About</span>
+                <span id="menu_buttons">Settings</span>
             </div>
         </div>
+    </div>
 
-        <div style="display: flex;">
-            <div style="min-height: 400px; flex: 1;"></div>
-            <div style="min-height: 400px; flex: 2.5;"></div>
-        </div>
-    </body>
-</html>
+    <!-- Placeholder for additional sections -->
+    <div class="row mt-5">
+        <div class="col-md-4" style="min-height: 400px;"></div>
+        <div class="col-md-8" style="min-height: 400px;"></div>
+    </div>
+</div>
+{% endblock %}

@@ -30,3 +30,7 @@ def dashboard(request):
 # calc/views.py
 def base(request):
     return render(request, 'calc/base.html')
+from django.shortcuts import render
+
+def index(request):
+    return render(request, 'calc/index.html')

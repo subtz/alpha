@@ -1,95 +1,84 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Ezzy Site{% endblock %}</title>
 
-    <!-- Load static files -->
-    {% load static %}
+    <!-- Enable responsiveness on all devices -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Link to your custom CSS file -->
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <title>{% block title %}Ezzy Website{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS from CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+    <!-- Optional block for page-specific styles/scripts -->
+    {% block head %}{% endblock %}
+</head>
+
+<body style="background-color: #e9ebee; font-family: Tahoma;">
+
+    <!-- Responsive Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'home' %}">Ezzy</a>
+
+            <!-- Toggle button for mobile view -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Navbar menu items (collapsible on small screens) -->
+            <div class="collapse navbar-collapse" id="navbarMenu">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a href="{% url 'register' %}" class="btn btn-success me-2">Register</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'login' %}" class="btn btn-light text-dark">Login</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="container my-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- WhatsApp Floating Icon (middle left, animated) -->
+    <a href="https://wa.me/255616590910" target="_blank" id="whatsapp-float" aria-label="Chat on WhatsApp">
+        <img src="{% static 'calc/images/whatsapp.png' %}" alt="WhatsApp Icon">
+    </a>
+
+    <!-- Style for floating WhatsApp icon -->
     <style>
-        /* Your Custom Styles */
-        #blue_bar {
-            height: 50px;
-            background-color: #405d9b;
-            color: white;
-            padding: 10px 0;
-            font-size: 30px;
-            text-align: center;
+        #whatsapp-float {
+            position: fixed;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            z-index: 999;
+            animation: bounce 1.2s infinite;
         }
 
-        #signup_button {
-            background-color: #42b72a;
-            padding: 12px 24px;
-            font-size: 18px;
-            font-weight: bold;
-            color: white;
-            border-radius: 8px;
-            text-align: center;
+        #whatsapp-float img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
             cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-top: 5px;
         }
 
-        #signup_button:hover {
-            background-color: #36a420;  /* Darker green on hover */
-        }
-
-    
-
-        .navbar {
-            padding: 15px 30px;
-            background-color: #3c5a99;
-            color: white;
-        }
-
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            font-size: 18px;
-            padding: 10px 15px;
-            border-radius: 8px;
-            transition: background-color 0.3s ease;
-        }
-
-        .navbar a:hover {
-            background-color: #2c4582; /* Darker shade on hover */
-        }
-
-        .container {
-            margin-top: 40px;
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-50%) translateY(0); }
+            50% { transform: translateY(-50%) translateY(-10px); }
         }
     </style>
-</head>
-<body style="background-color: #f8f9fa; font-family: Tahoma;">
 
-    <!-- Top Blue Bar -->
-    <div id="blue_bar">
-        <div style="font-size: 24px;">Ezzy</div>
-        <div id="signup_button">
-            {% if user.is_authenticated %}
-                <a href="{% url 'dashboard' %}" style="color: white; text-decoration: none;">Dashboard</a>
-                <span> | </span>
-                <a href="{% url 'logout' %}" style="color: white; text-decoration: none;">Logout</a>
-            {% else %}
-                <a href="{% url 'login' %}" style="color: white; text-decoration: none;">Login</a>
-                <span> | </span>
-                <a href="{% url 'register' %}" style="color: white; text-decoration: none;">Register</a>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Search Box -->
-    <div style="padding: 10px; text-align: center;">
-    </div>
-
-    <!-- Main Content Block -->
-    <div class="container">
-        {% block content %}
-        {% endblock %}
-    </div>
+    <!-- Bootstrap Bundle JS for responsive components -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

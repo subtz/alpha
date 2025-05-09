@@ -1,104 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{% block title %}Login | Ezzy Site{% endblock %}</title>
 
-    <!-- Load static files -->
-    {% load static %}
 
-    <!-- Link to your custom CSS file -->
-    <link rel="stylesheet" href="{% static 'style.css' %}">
-    <style>
-        /* Main Styles */
-        body {
-            background-color: #f8f9fa;
-            font-family: Tahoma, sans-serif;
-        }
+{% block head %}
+<!-- Optional additional styles specific to this page -->
+<style>
+    body {
+        background-color: #f8f9fa;
+        font-family: Tahoma, sans-serif;
+    }
 
-        #login_bar {
-            background-color: white;
-            width: 400px;
-            margin: auto;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            margin-top: 80px;
-        }
+    /* Login form container */
+    #login_bar {
+        background-color: white;
+        max-width: 400px;
+        margin: 80px auto;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
 
-        #login_bar h2 {
-            text-align: center;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
+    /* Header */
+    #login_bar h2 {
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
 
-        .input-field {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-        }
+    /* Input fields */
+    .input-field {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+    }
 
-        .input-field:focus {
-            outline: none;
-            border-color: #405d9b;
-        }
+    .input-field:focus {
+        outline: none;
+        border-color: #405d9b;
+    }
 
-        #submit_button {
-            background-color: #42b72a;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 12px 0;
-            width: 100%;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+    /* Submit button styling */
+    #submit_button {
+        background-color: #42b72a;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        padding: 12px 0;
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
 
-        #submit_button:hover {
-            background-color: #36a420; /* Darker green on hover */
-        }
+    #submit_button:hover {
+        background-color: #36a420;
+    }
 
-        .text-center {
-            text-align: center;
-        }
+    /* Centered text and link styling */
+    .text-center {
+        text-align: center;
+        margin-top: 10px;
+    }
 
-        .text-center a {
-            color: #405d9b;
-            text-decoration: none;
-        }
+    .text-center a {
+        color: #405d9b;
+        text-decoration: none;
+    }
 
-        .text-center a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
+    .text-center a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
 
-    <!-- Main Login Form -->
-    <div id="login_bar">
-        <h2>Login to Ezzy Site</h2>
-        <form method="POST" action="{% url 'login' %}">
-            {% csrf_token %}
-            
-            <!-- Username Field -->
-            <input type="text" class="input-field" name="username" placeholder="Username" required><br>
+{% block content %}
+<!-- Main login form -->
+<div id="login_bar">
+    <h2>Login to Ezzy Site</h2>
+    <form method="POST" action="{% url 'login' %}">
+        {% csrf_token %}
+        
+        <!-- Username field -->
+        <input type="text" class="input-field" name="username" placeholder="Username" required>
 
-            <!-- Password Field -->
-            <input type="password" class="input-field" name="password" placeholder="Password" required><br>
+        <!-- Password field -->
+        <input type="password" class="input-field" name="password" placeholder="Password" required>
 
-            <!-- Login Button -->
-            <button type="submit" id="submit_button">Login</button>
-        </form>
+        <!-- Submit button -->
+        <button type="submit" id="submit_button">Login</button>
+    </form>
 
-        <div class="text-center">
-            <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
-        </div>
+    <!-- Register link -->
+    <div class="text-center">
+        <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
     </div>
-
-</body>
-</html>
+</div>
+{% endblock %}
