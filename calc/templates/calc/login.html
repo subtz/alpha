@@ -1,14 +1,104 @@
-<!-- Login page template -->
-<h2>Login</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Login | Ezzy Site{% endblock %}</title>
 
-<!-- Display login form errors if any -->
-{% if form.errors %}
-  <p style="color:red;">Invalid credentials</p>
-{% endif %}
+    <!-- Load static files -->
+    {% load static %}
 
-<!-- Login form -->
-<form method="post">
-  {% csrf_token %}           <!-- CSRF token for security -->
-  {{ form.as_p }}            <!-- Render form fields as paragraphs -->
-  <button type="submit">Login</button>
-</form>
+    <!-- Link to your custom CSS file -->
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        /* Main Styles */
+        body {
+            background-color: #f8f9fa;
+            font-family: Tahoma, sans-serif;
+        }
+
+        #login_bar {
+            background-color: white;
+            width: 400px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 80px;
+        }
+
+        #login_bar h2 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #405d9b;
+        }
+
+        #submit_button {
+            background-color: #42b72a;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 12px 0;
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #submit_button:hover {
+            background-color: #36a420; /* Darker green on hover */
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-center a {
+            color: #405d9b;
+            text-decoration: none;
+        }
+
+        .text-center a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Login Form -->
+    <div id="login_bar">
+        <h2>Login to Ezzy Site</h2>
+        <form method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+            
+            <!-- Username Field -->
+            <input type="text" class="input-field" name="username" placeholder="Username" required><br>
+
+            <!-- Password Field -->
+            <input type="password" class="input-field" name="password" placeholder="Password" required><br>
+
+            <!-- Login Button -->
+            <button type="submit" id="submit_button">Login</button>
+        </form>
+
+        <div class="text-center">
+            <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,50 @@
+  #top_bar {
+    background-color: #3c5a99;
+    height: 100px;
+    color: #d9dfeb;
+    font-size: 40px;
+    padding: 4px;
+  }
+
+  #signup_button {
+    background-color: #42b72a;
+    width: 70px;
+    text-align: center;
+    padding: 4px;
+    font-size: 20px;
+    border-radius: 8px;
+    float: right;
+  }
+
+  #login_bar {
+    background-color: white;
+    width: 800px;
+    border-radius: 8px;
+    margin: auto;
+    margin-top: 50px;
+    height: auto;
+    padding: 4px;
+    text-align: center;
+  }
+
+  #text,
+  select {
+    width: 200px;
+    border-radius: 8px;
+    margin: auto;
+    height: auto;
+    padding: 4px;
+    border: solid 1px #aaa;
+    font-size: 14px;
+  }
+
+  #submit {
+    background-color: #3c5a99;
+    width: 100px;
+    border-radius: 8px;
+    margin: auto;
+    height: auto;
+    padding: 4px;
+    color: white;
+    font-weight: bold;
+  }
