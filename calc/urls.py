@@ -25,4 +25,8 @@ urlpatterns = [
 
     # Dashboard route — only accessible after login
     path('dashboard/', views.dashboard, name='dashboard'),
+    
+     # base.html route — renders base.html template
+    path('base/', views.base, name='base'),
+   
 ]

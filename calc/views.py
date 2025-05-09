@@ -26,3 +26,7 @@ from django.contrib.auth.decorators import login_required  # Import the login_re
 @login_required
 def dashboard(request):
     return render(request, 'dashboard.html')  # Render the dashboard template
+
+# calc/views.py
+def base(request):
+    return render(request, 'calc/base.html')
