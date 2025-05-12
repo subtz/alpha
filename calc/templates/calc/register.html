@@ -2,8 +2,15 @@
 
 {% block head %}
 <style>
- 
+    /* Base styles */
+    body {
+        background-color: #f8f9fa;
+        font-family: Tahoma, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
 
+    /* Styling for signup button */
     #signup_button {
         background-color: #42b72a;
         width: 70px;
@@ -14,44 +21,77 @@
         float: right;
     }
 
+    /* Login form container */
     #login_bar {
         background-color: white;
-        width: 800px;
+        width: 90%;
+        max-width: 800px;
         border-radius: 8px;
         margin: auto;
         margin-top: 50px;
         padding: 20px;
         text-align: center;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 
+    /* Input field styles */
     #text {
-        width: 200px;
+        width: 100%;
+        max-width: 300px;
         border-radius: 8px;
         margin: auto;
         padding: 4px;
         border: solid 1px #aaa;
         font-size: 14px;
+        margin-bottom: 15px;
     }
 
+    /* Submit button styling */
     #submit {
         background-color: #3c5a99;
-        width: 100px;
+        width: 100%;
+        max-width: 200px;
         border-radius: 8px;
-        margin: auto;
-        height: auto;
-        padding: 4px;
+        padding: 8px;
         color: white;
         font-weight: bold;
+        margin-top: 15px;
+    }
+
+    /* Responsive design tweaks */
+    @media (max-width: 768px) {
+        #login_bar {
+            width: 95%;
+            padding: 15px;
+        }
+
+        #text {
+            width: 80%;
+            font-size: 12px;
+        }
+
+        #submit {
+            width: 100%;
+            font-size: 14px;
+        }
+    }
+
+    /* Small screen adjustments */
+    @media (max-width: 480px) {
+        #text {
+            width: 90%;
+        }
+
+        #submit {
+            width: 100%;
+            font-size: 16px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-    
-
 <div id="login_bar">
-   
-
     <form method="POST">
         {% csrf_token %}
         
@@ -75,7 +115,7 @@
         <input type="email" id="text" name="email" placeholder="Email" required><br><br>
 
         <!-- Submit Button -->
-        <input type="submit" id="submit" value="register"><br>
+        <input type="submit" id="submit" value="Register"><br>
     </form>
 </div>
 {% endblock %}
