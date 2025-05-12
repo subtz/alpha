@@ -21,7 +21,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     # Registration page — user sign-up form
-    path('register/', views.register, name='register'),
+    path('home/', views.home, name='home'),
 
     # Dashboard route — only accessible after login
     path('dashboard/', views.dashboard, name='dashboard'),
