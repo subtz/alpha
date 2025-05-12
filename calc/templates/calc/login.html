@@ -1,16 +1,18 @@
 {% extends 'calc/base.html' %}
 
 {% block head %}
-<!-- Optional additional styles specific to this page -->
 <style>
     body {
         background-color: #f8f9fa;
         font-family: Tahoma, sans-serif;
+        margin: 0;
+        padding: 0;
     }
 
     /* Login form container */
     #login_bar {
         background-color: white;
+        width: 90%;
         max-width: 400px;
         margin: 80px auto;
         padding: 30px;
@@ -18,14 +20,12 @@
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 
-    /* Header */
     #login_bar h2 {
         text-align: center;
         font-size: 24px;
         margin-bottom: 20px;
     }
 
-    /* Input fields */
     .input-field {
         width: 100%;
         padding: 12px;
@@ -33,6 +33,7 @@
         border: 1px solid #ddd;
         border-radius: 8px;
         font-size: 16px;
+        box-sizing: border-box;
     }
 
     .input-field:focus {
@@ -40,7 +41,6 @@
         border-color: #405d9b;
     }
 
-    /* Submit button styling */
     #submit_button {
         background-color: #42b72a;
         color: white;
@@ -58,7 +58,6 @@
         background-color: #36a420;
     }
 
-    /* Centered text and link styling */
     .text-center {
         text-align: center;
         margin-top: 10px;
@@ -72,27 +71,35 @@
     .text-center a:hover {
         text-decoration: underline;
     }
+
+    /* Responsive tweaks for small devices */
+    @media screen and (max-width: 480px) {
+        #login_bar {
+            padding: 20px;
+            margin: 40px auto;
+        }
+
+        .input-field {
+            font-size: 14px;
+            padding: 10px;
+        }
+
+        #submit_button {
+            font-size: 16px;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Main login form -->
 <div id="login_bar">
     <h2>Login to Ezzy Site</h2>
     <form method="POST" action="{% url 'login' %}">
         {% csrf_token %}
-        
-        <!-- Username field -->
         <input type="text" class="input-field" name="username" placeholder="Username" required>
-
-        <!-- Password field -->
         <input type="password" class="input-field" name="password" placeholder="Password" required>
-
-        <!-- Submit button -->
         <button type="submit" id="submit_button">Login</button>
     </form>
-
-    <!-- Register link -->
     <div class="text-center">
         <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
     </div>
