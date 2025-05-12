@@ -1,99 +1,81 @@
-{% block content %}
-{% extends 'base.html' %}
+{% extends 'calc/base.html' %}
 
-{% block title %}Home | Ezzy Website{% endblock %}
+{% block head %}
+<style>
+ 
 
-{% block content %}
-    <h2>Welcome to the Ezzy Website!</h2>
-    <p>This is your home page content.</p>
+    #signup_button {
+        background-color: #42b72a;
+        width: 70px;
+        text-align: center;
+        padding: 4px;
+        font-size: 20px;
+        border-radius: 8px;
+        float: right;
+    }
+
+    #login_bar {
+        background-color: white;
+        width: 800px;
+        border-radius: 8px;
+        margin: auto;
+        margin-top: 50px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    #text {
+        width: 200px;
+        border-radius: 8px;
+        margin: auto;
+        padding: 4px;
+        border: solid 1px #aaa;
+        font-size: 14px;
+    }
+
+    #submit {
+        background-color: #3c5a99;
+        width: 100px;
+        border-radius: 8px;
+        margin: auto;
+        height: auto;
+        padding: 4px;
+        color: white;
+        font-weight: bold;
+    }
+</style>
 {% endblock %}
 
-    <div id="top_bar">
-        <div>Ezzy Website</div>
-        <div id="signup_button">
-            <a href="{% url 'login' %}" style="color: white; text-decoration: none;">Login</a>
-        </div>
-    </div>
+{% block content %}
+    
 
-    <div id="login_bar">
-        <b>Register to Ezzy</b><br><br>
+<div id="login_bar">
+   
 
-        <form method="POST">
-            {% csrf_token %}
-            
-            <!-- Username Field -->
-            <input type="text" id="text" name="username" placeholder="Input Username" required><br><br>
-            
-            <!-- Gender Selection -->
-            <span>Gender:</span><br>
-            <select id="text" name="gender" required>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-            </select><br><br>
+    <form method="POST">
+        {% csrf_token %}
+        
+        <!-- Username Field -->
+        <input type="text" id="text" name="username" placeholder="Input Username" required><br><br>
+        
+        <!-- Gender Selection -->
+        <span>Gender:</span><br>
+        <select id="text" name="gender" required>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+        </select><br><br>
 
-            <!-- Password Field -->
-            <input type="password" id="text" name="password" placeholder="Input Password" required><br><br>
+        <!-- Password Field -->
+        <input type="password" id="text" name="password" placeholder="Input Password" required><br><br>
 
-            <!-- Re-enter Password Field -->
-            <input type="password" id="text" name="password_confirm" placeholder="Re-enter Password" required><br><br>
+        <!-- Re-enter Password Field -->
+        <input type="password" id="text" name="password_confirm" placeholder="Re-enter Password" required><br><br>
 
-            <!-- Email Field -->
-            <input type="email" id="text" name="email" placeholder="Email" required><br><br>
+        <!-- Email Field -->
+        <input type="email" id="text" name="email" placeholder="Email" required><br><br>
 
-            <!-- Submit Button -->
-            <input type="submit" id="submit" value="register"><br>
-        </form>
-    </div>
-{% endblock %}
-
-{% block styles %}
-    <style>
-        #top_bar {
-            background-color: #3c5a99;
-            height: 100px;
-            color: #d9dfeb;
-            font-size: 40px;
-            padding: 4px;
-        }
-
-        #signup_button {
-            background-color: #42b72a;
-            width: 70px;
-            text-align: center;
-            padding: 4px;
-            font-size: 20px;
-            border-radius: 8px;
-            float: right;
-        }
-
-        #login_bar {
-            background-color: white;
-            width: 800px;
-            border-radius: 8px;
-            margin: auto;
-            margin-top: 50px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        #text {
-            width: 200px;
-            border-radius: 8px;
-            margin: auto;
-            padding: 4px;
-            border: solid 1px #aaa;
-            font-size: 14px;
-        }
-
-        #submit {
-            background-color: #3c5a99;
-            width: 100px;
-            border-radius: 8px;
-            margin: auto;
-            height: auto;
-            padding: 4px;
-            color: white;
-            font-weight: bold;
-        }
-    </style>
+        <!-- Submit Button -->
+        <input type="submit" id="submit" value="register"><br>
+    </form>
+</div>
 {% endblock %}
