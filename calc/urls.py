@@ -12,7 +12,7 @@ from . import views
 # Define all URL patterns in ONE list to avoid overwriting
 urlpatterns = [
     # Home page route — shown at http://127.0.0.1:8000/
-    path('', views.home, name='home'),
+    path('', views.register, name='home'),
 
     # Login route — renders login.html template
     path('login/', auth_views.LoginView.as_view(template_name='calc/login.html'), name='login'),
