@@ -4,8 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Ezzy Website{% endblock %}</title>
-
+    <title>{% block title %}Ezzy Website{% endblock %}</title> <!-- Title block allows child templates to set their own titles -->
     <style>
         /* Top bar styles */
         #top_bar {
@@ -75,7 +74,7 @@
         }
     </style>
 
-    {% block head %}{% endblock %}
+    {% block head %}{% endblock %} <!-- This block is used to insert any extra head content in child templates -->
 </head>
 <body>
 
@@ -91,6 +90,7 @@
             </div>
         </div>
     </div>
+  <a href="{% url 'home' %}">nome4Now</a>
 
     <!-- WhatsApp Floating Icon -->
     <a href="https://wa.me/255616590910" target="_blank" id="whatsapp-float" aria-label="Chat on WhatsApp">
@@ -99,7 +99,7 @@
 
     <!-- Page content -->
     <div class="container">
-        {% block content %}{% endblock %}
+        {% block content %}{% endblock %} <!-- Content block for child templates to inject content -->
     </div>
 
 </body>
