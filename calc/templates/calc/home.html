@@ -1,19 +1,9 @@
-
+{% extends 'calc/base.html' %}
 {% load static %}
 
 {% block head %}
 <!-- Page-specific CSS -->
 <style>
-    #blue_bar {
-        height: 60px;
-        background-color: #405d9b;
-        color: #d9dfeb;
-        font-size: x-large;
-        border-radius: 4px;
-        text-align: center;
-        padding: 10px 0;
-        margin-bottom: 20px;
-    }
 
     #search_box {
         height: 40px;
@@ -64,16 +54,11 @@
 {% block content %}
 <!-- Profile Header with Title -->
 <div class="container">
-    <div id="blue_bar">
-        <marquee>Ezzy Website</marquee> Profile Design
-    </div>
-              <a href="{% url 'login' %}">return</a>
-
-
+  
     <!-- Search bar -->
     <input type="text" id="search_box" placeholder="Search">
 
-    <!-- Right-floating image (e.g., logo or avatar) -->
+    <!-- Right-floating image -->
     <img src="{% static 'calc/images/mmil.jpg' %}" alt="Profile Icon" style="width: 100px; float: right; margin-top: -60px;">
 
     <!-- Profile Content -->
@@ -87,7 +72,7 @@
             <img src="{% static 'calc/images/OIF.jpg' %}" id="profile_pic" class="mb-3" alt="Main Profile">
 
             <!-- Secondary Profile Picture -->
-            <img src="{% static 'calc/images/captain_marvel.jpg' %}" id="profile_pic2" class="mb-3" alt="Secondary Profile">
+            <img src="{% static 'calc/images/ezzy.png' %}" id="profile_pic2" class="mb-3" alt="Secondary Profile">
 
             <!-- Profile Info -->
             <div style="font-size: 20px;">EZRA BONPHASE</div>
