@@ -1,3 +1,5 @@
+import dotenv
+dotenv.load_dotenv()
 import dj_database_url
 import os
 from decouple import config  # 🔑 Allows you to load secrets and environment variables from .env

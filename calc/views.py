@@ -14,7 +14,7 @@ def register(request):
         if form.is_valid():  # Check if the form data is valid
             user = form.save()  # Save the user to the database
             login(request, user)  # Log the user in automatically
-            return redirect('dashboard')  # Redirect to the dashboard page after successful registration
+            return redirect('calc/login.html')  # Redirect to the loginpy manage.py create  page after successful registration
     else:
         form = UserCreationForm()  # Create a blank form for GET request
     return render(request, 'calc/register.html', {'form': form})  # Render the register form in the template
