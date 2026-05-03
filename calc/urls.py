@@ -26,6 +26,10 @@ urlpatterns = [
     # Dashboard route — only accessible after login
     path('dashboard/', views.dashboard, name='dashboard'),
     
-     # base.html route — renders base.html template
+    # base.html route — renders base.html template
     path('base/', views.base, name='base'),
+    
+    # Smart Queue routes
+    path('queues/', views.queue_list, name='queue_list'),
+    path('queues/<int:queue_id>/join/', views.join_queue, name='join_queue'),
 ]
