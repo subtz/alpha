@@ -18,7 +18,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='calc/login.html'), name='login'),
 
     # Logout route — logs the user out and redirects
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
 
     # Registration page — user sign-up form
     path('register/', views.register, name='register'),
@@ -28,6 +28,4 @@ urlpatterns = [
     
      # base.html route — renders base.html template
     path('base/', views.base, name='base'),
-  path('', views.index, name='index'),  
-  
 ]
