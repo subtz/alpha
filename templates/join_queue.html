@@ -1,0 +1,107 @@
+{% extends 'calc/base.html' %}
+
+{% block title %}Join Queue - {{ queue.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Join Queue: {{ queue.name }}</h1>
+    
+    {% if queue.description %}
+        <p>{{ queue.description }}</p>
+    {% endif %}
+    
+    <form method="POST" class="join-queue-form">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="name">Your Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="phone">Phone Number:</label>
+            <input type="tel" id="phone" name="phone" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="service">Select Service:</label>
+            <select id="service" name="service" required>
+                <option value="">-- Select a service --</option>
+                {% for service in services %}
+                    <option value="{{ service.id }}">{{ service.name }} (Est. {{ service.estimated_time }} min)</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Join Queue</button>
+        <a href="{% url 'queue_list' %}" class="btn btn-secondary">Back to Queues</a>
+    </form>
+</div>
+
+<style>
+    .join-queue-form {
+        max-width: 500px;
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #3c5a99;
+    }
+    
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #42b72a;
+        box-shadow: 0 0 5px #42b72a;
+    }
+    
+    .btn-primary {
+        background-color: #42b72a;
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-right: 10px;
+    }
+    
+    .btn-primary:hover {
+        background-color: #359a20;
+    }
+    
+    .btn-secondary {
+        background-color: #999;
+        color: white;
+        padding: 12px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        display: inline-block;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #777;
+    }
+</style>
+{% endblock %}

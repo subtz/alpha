@@ -1,0 +1,56 @@
+{% extends 'calc/base.html' %}
+
+{% block title %}Smart Queue - Available Queues{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Available Service Queues</h1>
+    
+    {% if queues %}
+        <div class="queue-list">
+            {% for queue in queues %}
+                <div class="queue-card">
+                    <h2>{{ queue.name }}</h2>
+                    <p>{{ queue.description }}</p>
+                    <p><strong>Current Capacity:</strong> 
+                        {% with queue.queueentry_set.filter|length as count %}
+                            {{ count }} / {{ queue.max_capacity }}
+                        {% endwith %}
+                    </p>
+                    <a href="{% url 'join_queue' queue.id %}" class="btn btn-primary">Join Queue</a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No active queues available at the moment. Please try again later.</p>
+    {% endif %}
+</div>
+
+<style>
+    .queue-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 15px 0;
+        background-color: #f9f9f9;
+    }
+    
+    .queue-card h2 {
+        margin-top: 0;
+        color: #3c5a99;
+    }
+    
+    .btn-primary {
+        background-color: #42b72a;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        display: inline-block;
+    }
+    
+    .btn-primary:hover {
+        background-color: #359a20;
+    }
+</style>
+{% endblock %}

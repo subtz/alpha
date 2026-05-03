@@ -1,7 +1,8 @@
-from django.contrib.auth.forms import UserCreationForm  # Import the default user registration form
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from .models import Queue, Customer, Service, QueueEntry
 
 # Home view - renders the home.html template
 def home(request):
@@ -44,3 +45,55 @@ def base(request):
 # Index view
 def index(request):
     return render(request, 'calc/home.html')
+
+# Smart Queue views
+
+def queue_list(request):
+    """Display all active queues that customers can join."""
+    queues = Queue.objects.filter(is_active=True)
+    context = {'queues': queues}
+    return render(request, 'queue_list.html', context)
+
+def join_queue(request, queue_id):
+    """Allow a customer to join a queue by providing name, phone, and service."""
+    queue = Queue.objects.get(id=queue_id)
+    services = Service.objects.filter(is_active=True)
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        phone = request.POST.get('phone')
+        service_id = request.POST.get('service')
+        
+        # Get or create customer
+        customer, created = Customer.objects.get_or_create(
+            email=f"{phone}@queue.local",  # Use phone as unique identifier
+            defaults={'name': name, 'phone': phone}
+        )
+        
+        # Get service
+        service = Service.objects.get(id=service_id)
+        
+        # Get the next position in the queue
+        last_entry = QueueEntry.objects.filter(queue=queue).order_by('-position').first()
+        next_position = (last_entry.position + 1) if last_entry else 1
+        
+        # Create queue entry
+        queue_entry = QueueEntry.objects.create(
+            queue=queue,
+            customer=customer,
+            service=service,
+            position=next_position,
+            status='waiting'
+        )
+        
+        # Redirect to a success page or dashboard
+        return render(request, 'queue_join_success.html', {
+            'queue_entry': queue_entry,
+            'queue': queue,
+            'customer': customer,
+            'service': service
+        })
+    
+    context = {'queue': queue, 'services': services}
+    return render(request, 'join_queue.html', context)
+
