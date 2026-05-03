@@ -55,14 +55,22 @@ TEMPLATES = [
 WSGI_APPLICATION = 'alpha.wsgi.application'
 
 # Database configuration
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL', cast=str),  # Fetch DATABASE_URL from .env or environment variable
-        conn_max_age=600,  # Keep database connections open for up to 10 minutes
-        ssl_require=True if config('DATABASE_URL', default='').startswith('postgres') else False,  # Only enable SSL for PostgreSQL
-    
-    )
-}
+DATABASE_URL = config('DATABASE_URL', default='', cast=str)
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=DATABASE_URL.startswith('postgres'),
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -94,5 +102,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Correct way for productio
 
 # Storage engine for serving static files efficiently with WhiteNoise
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_REDIRECT_URL = 'home'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
