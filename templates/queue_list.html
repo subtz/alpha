@@ -24,6 +24,10 @@
     {% else %}
         <p>No active queues available at the moment. Please try again later.</p>
     {% endif %}
+    
+    <div class="navigation-buttons">
+        <a href="{% url 'home' %}" class="nav-button">Home</a>
+    </div>
 </div>
 
 <style>
@@ -51,6 +55,23 @@
     
     .btn-primary:hover {
         background-color: #359a20;
+    }
+
+    .nav-button {
+        display: inline-block;
+        padding: 12px 20px;
+        background-color: #3c5a99;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        margin: 10px;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+
+    .nav-button:hover {
+        background-color: #2c3f6f;
+        color: white;
     }
 </style>
 {% endblock %}
