@@ -48,6 +48,23 @@
         font-weight: bold;
         color: #405d9b;
     }
+
+    .nav-button {
+        display: inline-block;
+        padding: 12px 20px;
+        background-color: #42b72a;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        margin: 5px;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+
+    .nav-button:hover {
+        background-color: #359a20;
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -84,6 +101,12 @@
                 <span id="menu_buttons">Photos</span>
                 <span id="menu_buttons">About</span>
                 <span id="menu_buttons">Settings</span>
+            </div>
+
+            <!-- Smart Queue Navigation Buttons -->
+            <div class="mt-4">
+                <a href="{% url 'queue_list' %}" class="nav-button">View Queues</a>
+                <a href="/admin/" class="nav-button">Admin Panel</a>
             </div>
         </div>
     </div>
