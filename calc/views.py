@@ -57,8 +57,9 @@ def queue_control_dashboard(request):
     served_today = QueueEntry.objects.filter(status="completed").count()
     waiting_list = QueueEntry.objects.filter(status="waiting").order_by("created_at")
 
-    # Check if any queue is paused
-    queue_paused = Queue.objects.filter(is_paused=True).exists()
+    # Assume one active queue for now
+    active_queue = Queue.objects.first()
+    queue_paused = active_queue.is_paused if active_queue else False
 
     context = {
         "current_entry": current_entry,
@@ -66,6 +67,7 @@ def queue_control_dashboard(request):
         "served_today": served_today,
         "waiting_list": waiting_list,
         "queue_paused": queue_paused,
+        "queue_id": active_queue.id if active_queue else None,
     }
     return render(request, "admin_queue_dashboard.html", context)
 
@@ -133,5 +135,12 @@ def skip_current(request):
     if current:
         current.status = "skipped"
         current.save()
+    return redirect("queue_control_dashboard")
+
+
+def toggle_queue_pause(request, queue_id):
+    queue = Queue.objects.get(id=queue_id)
+    queue.is_paused = not queue.is_paused
+    queue.save()
     return redirect("queue_control_dashboard")
 
