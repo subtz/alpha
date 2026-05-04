@@ -35,4 +35,6 @@ urlpatterns = [
 
     # Staff queue control dashboard
     path('staff/dashboard/', views.queue_control_dashboard, name='queue_control_dashboard'),
+    path('staff/serve/', views.serve_current, name='serve_current'),
+    path('staff/skip/', views.skip_current, name='skip_current'),
 ]
