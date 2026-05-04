@@ -72,12 +72,8 @@
             </div>
             <div class="col-md-3">
                 <div class="card dashboard-card shadow-sm p-4">
-                    <div class="text-muted metric-label">Queue Status</div>
-                    {% if not queue_paused %}
-                        <span class="badge bg-success status-pill">Active</span>
-                    {% else %}
-                        <span class="badge bg-danger status-pill">Paused</span>
-                    {% endif %}
+                    <div class="text-muted metric-label">Status</div>
+                    <div class="h5 mt-2">{{ "Paused" if queue_paused else "Active" }}</div>
                 </div>
             </div>
         </div>
@@ -88,8 +84,8 @@
                     <div class="mt-4">
                       <a href="{% url 'serve_current' %}" class="btn btn-success">Serve Current</a>
                       <a href="{% url 'skip_current' %}" class="btn btn-warning">Skip Student</a>
-                      {% if queue_id %}
-                        <a href="{% url 'toggle_queue_pause' queue_id %}" class="btn btn-danger">
+                      {% if queue %}
+                        <a href="{% url 'toggle_queue_pause' queue.id %}" class="btn btn-danger">
                           {% if queue_paused %} Resume Queue {% else %} Pause Queue {% endif %}
                         </a>
                       {% endif %}
@@ -100,12 +96,12 @@
 
         <div class="card shadow-sm">
             <div class="card-body">
-                <h5 class="card-title mb-3">Waiting List</h5>
+                <h3 class="card-title mb-3">Waiting List</h3>
                 {% if waiting_list %}
                   <ul class="list-group">
                     {% for entry in waiting_list %}
                       <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ entry.customer.name }} (Ticket: {{ entry.ticket_number }})
+                        {{ entry.customer.name }}
                         <small class="text-muted">Joined: {{ entry.created_at|date:'H:i, M d' }}</small>
                       </li>
                     {% endfor %}

@@ -34,7 +34,7 @@ urlpatterns = [
     path('queues/<int:queue_id>/join/', views.join_queue, name='join_queue'),
 
     # Staff queue control dashboard
-    path('staff/dashboard/', views.queue_control_dashboard, name='queue_control_dashboard'),
+    path('staff/dashboard/<int:queue_id>/', views.queue_control_dashboard, name='queue_control_dashboard'),
     path('staff/serve/', views.serve_current, name='serve_current'),
     path('staff/skip/', views.skip_current, name='skip_current'),
     path('staff/toggle/<int:queue_id>/', views.toggle_queue_pause, name='toggle_queue_pause'),
