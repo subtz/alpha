@@ -51,23 +51,20 @@ def index(request):
 # Smart Queue views
 
 @staff_member_required
-def queue_control_dashboard(request):
-    current_entry = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
-    total_waiting = QueueEntry.objects.filter(status="waiting").count()
-    served_today = QueueEntry.objects.filter(status="completed").count()
-    waiting_list = QueueEntry.objects.filter(status="waiting").order_by("created_at")
-
-    # Assume one active queue for now
-    active_queue = Queue.objects.first()
-    queue_paused = active_queue.is_paused if active_queue else False
+def queue_control_dashboard(request, queue_id=None):
+    queue = Queue.objects.get(id=queue_id) if queue_id else Queue.objects.first()
+    current_entry = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at").first() if queue else None
+    waiting_list = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at") if queue else QueueEntry.objects.none()
+    total_waiting = waiting_list.count()
+    served_today = QueueEntry.objects.filter(queue=queue, status="completed").count() if queue else 0
 
     context = {
+        "queue": queue,
         "current_entry": current_entry,
+        "waiting_list": waiting_list,
         "total_waiting": total_waiting,
         "served_today": served_today,
-        "waiting_list": waiting_list,
-        "queue_paused": queue_paused,
-        "queue_id": active_queue.id if active_queue else None,
+        "queue_paused": queue.is_paused if queue else False,
     }
     return render(request, "admin_queue_dashboard.html", context)
 
@@ -122,6 +119,7 @@ def join_queue(request, queue_id):
     return render(request, 'join_queue.html', context)
 
 
+@staff_member_required
 def serve_current(request):
     current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
     if current:
@@ -130,6 +128,7 @@ def serve_current(request):
     return redirect("queue_control_dashboard")
 
 
+@staff_member_required
 def skip_current(request):
     current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
     if current:
@@ -138,9 +137,10 @@ def skip_current(request):
     return redirect("queue_control_dashboard")
 
 
+@staff_member_required
 def toggle_queue_pause(request, queue_id):
     queue = Queue.objects.get(id=queue_id)
     queue.is_paused = not queue.is_paused
     queue.save()
-    return redirect("queue_control_dashboard")
+    return redirect("queue_control_dashboard", queue_id=queue.id)
 
