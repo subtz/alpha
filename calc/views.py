@@ -1,7 +1,9 @@
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login
-from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 from .models import Queue, Customer, Service, QueueEntry
 
 # Home view - renders the home.html template
@@ -47,6 +49,21 @@ def index(request):
     return render(request, 'calc/home.html')
 
 # Smart Queue views
+
+@staff_member_required
+def queue_control_dashboard(request):
+    current_entry = QueueEntry.objects.filter(status='waiting').order_by('created_at').first()
+    total_waiting = QueueEntry.objects.filter(status='waiting').count()
+    served_today = QueueEntry.objects.filter(status='completed').count()
+
+    context = {
+        'current_entry': current_entry,
+        'total_waiting': total_waiting,
+        'served_today': served_today,
+        'queue_paused': False,
+    }
+    return render(request, 'admin_queue_dashboard.html', context)
+
 
 def queue_list(request):
     """Display all active queues that customers can join."""
