@@ -8,6 +8,7 @@ class Queue(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    is_paused = models.BooleanField(default=False)
     max_capacity = models.PositiveIntegerField(default=50)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -51,7 +52,7 @@ class QueueEntry(models.Model):
         ('waiting', 'Waiting'),
         ('serving', 'Serving'),
         ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
+        ('skipped', 'Skipped'),
     ]
 
     queue = models.ForeignKey(Queue, on_delete=models.CASCADE)
@@ -59,13 +60,17 @@ class QueueEntry(models.Model):
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
     position = models.PositiveIntegerField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='waiting')
+    created_at = models.DateTimeField(auto_now_add=True)
     entered_at = models.DateTimeField(auto_now_add=True)
     served_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
 
+    def ticket_number(self):
+        return f"SC-{self.position:03d}"
+
     def __str__(self):
-        return f"{self.customer.name} - {self.queue.name} (#{self.position})"
+        return f"{self.ticket_number()} - {self.customer.name}"
 
     class Meta:
         verbose_name = "Queue Entry"

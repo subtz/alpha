@@ -1,0 +1,142 @@
+{% extends 'calc/base.html' %}
+
+{% block title %}Staff Queue Control Dashboard{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<style>
+    .dashboard-card { border-radius: 1rem; }
+    .metric-label { font-size: 0.95rem; color: #6c757d; }
+    .ticket-badge { font-size: 1.1rem; letter-spacing: 0.1em; }
+    .action-btn { min-width: 170px; }
+    .status-pill { border-radius: 999px; padding: 0.45rem 0.9rem; }
+    .waiting-row:hover { background-color: #f8f9fa; }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/">Smart Queue</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="/queues">Queues</a></li>
+        <li class="nav-item"><a class="nav-link" href="/staff/dashboard">Staff Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin">Admin</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3">Staff Queue Control</h1>
+            <p class="text-muted">DUCE SmartCard Queue Management System</p>
+        </div>
+        <div>
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary">Back to Home</a>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-warning">{{ error }}</div>
+    {% else %}
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card dashboard-card shadow-sm p-4">
+                    <div class="text-muted metric-label">Current Serving</div>
+                    {% if current_entry %}
+                        <div class="h4 mt-2 ticket-badge">{{ current_entry.ticket_number }}</div>
+                        <div>{{ current_entry.customer.name }}</div>
+                    {% else %}
+                        <div class="h4 mt-2 text-secondary">None</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card shadow-sm p-4">
+                    <div class="text-muted metric-label">Total Waiting Students</div>
+                    <div class="h3 mt-2">{{ total_waiting }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card shadow-sm p-4">
+                    <div class="text-muted metric-label">Served Today</div>
+                    <div class="h3 mt-2">{{ served_today }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card shadow-sm p-4">
+                    <div class="text-muted metric-label">Queue Status</div>
+                    {% if active_status %}
+                        <span class="badge bg-success status-pill">Active</span>
+                    {% else %}
+                        <span class="badge bg-danger status-pill">Paused</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="serve_current">
+                        <button type="submit" class="btn btn-success action-btn" {% if not current_entry or not active_status %}disabled{% endif %}>Mark Current as Served</button>
+                    </form>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="skip_current">
+                        <button type="submit" class="btn btn-warning action-btn" {% if not current_entry or not active_status %}disabled{% endif %}>Skip Absent Student</button>
+                    </form>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_pause">
+                        <button type="submit" class="btn btn-outline-primary action-btn">{% if queue.is_paused %}Resume Queue{% else %}Pause Queue{% endif %}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Waiting List</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Student</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Entered At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in waiting_entries %}
+                                <tr class="waiting-row">
+                                    <td>{{ entry.ticket_number }}</td>
+                                    <td>{{ entry.customer.name }}</td>
+                                    <td>{{ entry.service.name }}</td>
+                                    <td><span class="badge bg-secondary">Waiting</span></td>
+                                    <td>{{ entry.entered_at|date:'H:i, M d' }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No waiting students.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
