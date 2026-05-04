@@ -76,45 +76,49 @@ def queue_list(request):
     return render(request, 'queue_list.html', context)
 
 def join_queue(request, queue_id):
-    """Allow a customer to join a queue by providing name, phone, and service."""
+    """Allow a customer to join a queue and show a success page with ticket info."""
     queue = Queue.objects.get(id=queue_id)
     services = Service.objects.filter(is_active=True)
-    
+
     if request.method == 'POST':
-        name = request.POST.get('name')
-        phone = request.POST.get('phone')
         service_id = request.POST.get('service')
-        
-        # Get or create customer
-        customer, created = Customer.objects.get_or_create(
-            email=f"{phone}@queue.local",  # Use phone as unique identifier
-            defaults={'name': name, 'phone': phone}
-        )
-        
-        # Get service
         service = Service.objects.get(id=service_id)
-        
-        # Get the next position in the queue
+
+        if request.user.is_authenticated and request.user.email:
+            customer, created = Customer.objects.get_or_create(
+                email=request.user.email,
+                defaults={
+                    'name': request.user.get_full_name() or request.user.username,
+                    'phone': ''
+                }
+            )
+        else:
+            name = request.POST.get('name')
+            phone = request.POST.get('phone')
+            customer, created = Customer.objects.get_or_create(
+                email=f"{phone}@queue.local",
+                defaults={'name': name, 'phone': phone}
+            )
+
         last_entry = QueueEntry.objects.filter(queue=queue).order_by('-position').first()
         next_position = (last_entry.position + 1) if last_entry else 1
-        
-        # Create queue entry
-        queue_entry = QueueEntry.objects.create(
+
+        entry = QueueEntry.objects.create(
             queue=queue,
             customer=customer,
             service=service,
             position=next_position,
             status='waiting'
         )
-        
-        # Redirect to a success page or dashboard
+
+        position = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('created_at').count()
+
         return render(request, 'queue_join_success.html', {
-            'queue_entry': queue_entry,
+            'entry': entry,
+            'position': position,
             'queue': queue,
-            'customer': customer,
-            'service': service
         })
-    
+
     context = {'queue': queue, 'services': services}
     return render(request, 'join_queue.html', context)
 
