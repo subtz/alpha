@@ -73,7 +73,7 @@
             <div class="col-md-3">
                 <div class="card dashboard-card shadow-sm p-4">
                     <div class="text-muted metric-label">Queue Status</div>
-                    {% if active_status %}
+                    {% if not queue_paused %}
                         <span class="badge bg-success status-pill">Active</span>
                     {% else %}
                         <span class="badge bg-danger status-pill">Paused</span>
@@ -113,7 +113,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for entry in waiting_entries %}
+                            {% for entry in waiting_list %}
                                 <tr class="waiting-row">
                                     <td>{{ entry.ticket_number }}</td>
                                     <td>{{ entry.customer.name }}</td>
