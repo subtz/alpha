@@ -52,17 +52,22 @@ def index(request):
 
 @staff_member_required
 def queue_control_dashboard(request):
-    current_entry = QueueEntry.objects.filter(status='waiting').order_by('created_at').first()
-    total_waiting = QueueEntry.objects.filter(status='waiting').count()
-    served_today = QueueEntry.objects.filter(status='completed').count()
+    current_entry = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
+    total_waiting = QueueEntry.objects.filter(status="waiting").count()
+    served_today = QueueEntry.objects.filter(status="completed").count()
+    waiting_list = QueueEntry.objects.filter(status="waiting").order_by("created_at")
+
+    # Check if any queue is paused
+    queue_paused = Queue.objects.filter(is_paused=True).exists()
 
     context = {
-        'current_entry': current_entry,
-        'total_waiting': total_waiting,
-        'served_today': served_today,
-        'queue_paused': False,
+        "current_entry": current_entry,
+        "total_waiting": total_waiting,
+        "served_today": served_today,
+        "waiting_list": waiting_list,
+        "queue_paused": queue_paused,
     }
-    return render(request, 'admin_queue_dashboard.html', context)
+    return render(request, "admin_queue_dashboard.html", context)
 
 
 def queue_list(request):
