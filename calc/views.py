@@ -67,7 +67,7 @@ def queue_control_dashboard(request):
 
 def queue_list(request):
     """Display all active queues that customers can join."""
-    queues = Queue.objects.filter(is_active=True)
+    queues = Queue.objects.all()
     context = {'queues': queues}
     return render(request, 'queue_list.html', context)
 
@@ -113,4 +113,20 @@ def join_queue(request, queue_id):
     
     context = {'queue': queue, 'services': services}
     return render(request, 'join_queue.html', context)
+
+
+def serve_current(request):
+    current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
+    if current:
+        current.status = "completed"
+        current.save()
+    return redirect("queue_control_dashboard")
+
+
+def skip_current(request):
+    current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
+    if current:
+        current.status = "skipped"
+        current.save()
+    return redirect("queue_control_dashboard")
 

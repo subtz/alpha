@@ -25,23 +25,18 @@
 <div class="container">
     <h1>Available Service Queues</h1>
     
+    <h2>Available Queues</h2>
     {% if queues %}
-        <div class="queue-list">
-            {% for queue in queues %}
-                <div class="queue-card">
-                    <h2>{{ queue.name }}</h2>
-                    <p>{{ queue.description }}</p>
-                    <p><strong>Current Capacity:</strong> 
-                        {% with queue.queueentry_set.filter|length as count %}
-                            {{ count }} / {{ queue.max_capacity }}
-                        {% endwith %}
-                    </p>
-                    <a href="{% url 'join_queue' queue.id %}" class="btn btn-primary">Join Queue</a>
-                </div>
-            {% endfor %}
-        </div>
+      <ul>
+        {% for queue in queues %}
+          <li>
+            {{ queue.name }} (Capacity: {{ queue.capacity }})
+            <a href="{% url 'join_queue' queue.id %}" class="btn btn-primary">Join</a>
+          </li>
+        {% endfor %}
+      </ul>
     {% else %}
-        <p>No active queues available at the moment. Please try again later.</p>
+      <p>No active queues available.</p>
     {% endif %}
     
     <div class="navigation-buttons">

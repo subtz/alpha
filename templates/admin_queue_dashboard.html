@@ -85,16 +85,10 @@
         <div class="card shadow-sm mb-4">
             <div class="card-body">
                 <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
-                    <form method="post" class="d-inline">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="serve_current">
-                        <button type="submit" class="btn btn-success action-btn" {% if not current_entry or not active_status %}disabled{% endif %}>Mark Current as Served</button>
-                    </form>
-                    <form method="post" class="d-inline">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="skip_current">
-                        <button type="submit" class="btn btn-warning action-btn" {% if not current_entry or not active_status %}disabled{% endif %}>Skip Absent Student</button>
-                    </form>
+                    <div class="mt-4">
+                      <a href="{% url 'serve_current' %}" class="btn btn-success">Serve Current</a>
+                      <a href="{% url 'skip_current' %}" class="btn btn-warning">Skip Student</a>
+                    </div>
                     <form method="post" class="d-inline">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="toggle_pause">
