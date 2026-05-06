@@ -73,7 +73,13 @@
             <div class="col-md-3">
                 <div class="card dashboard-card shadow-sm p-4">
                     <div class="text-muted metric-label">Status</div>
-                    <div class="h5 mt-2">{{ "Paused" if queue_paused else "Active" }}</div>
+                    <div class="h5 mt-2">
+                        {% if queue_paused %}
+                            Paused
+                        {% else %}
+                            Active
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
