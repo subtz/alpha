@@ -32,6 +32,7 @@ urlpatterns = [
     # Smart Queue routes
     path('queues/', views.queue_list, name='queue_list'),
     path('queues/join/<int:queue_id>/', views.join_queue, name='join_queue'),
+    path('display/', views.queue_display, name='queue_display'),
 
     # Staff queue control dashboard
     path('staff/dashboard/', views.queue_control_dashboard, name='queue_control_dashboard'),

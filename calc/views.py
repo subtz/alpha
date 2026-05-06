@@ -69,6 +69,23 @@ def queue_control_dashboard(request, queue_id=None):
     return render(request, "admin_queue_dashboard.html", context)
 
 
+def queue_display(request):
+    queue = Queue.objects.filter(is_active=True).first()
+    now_serving = QueueEntry.objects.filter(queue=queue, status="serving").order_by("created_at").first() if queue else None
+    next_ticket = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at").first() if queue else None
+    total_waiting = QueueEntry.objects.filter(queue=queue, status="waiting").count() if queue else 0
+    queue_status = "Paused" if queue and queue.is_paused else "Active" if queue else "No Active Queue"
+
+    context = {
+        "queue": queue,
+        "now_serving": now_serving,
+        "next_ticket": next_ticket,
+        "total_waiting": total_waiting,
+        "queue_status": queue_status,
+    }
+    return render(request, "display.html", context)
+
+
 def queue_list(request):
     """Display all active queues that customers can join."""
     queues = Queue.objects.all()
