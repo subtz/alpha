@@ -4,6 +4,41 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
+class ValidStudent(models.Model):
+    YEAR_CHOICES = [
+        (1, 'Year 1'),
+        (2, 'Year 2'),
+        (3, 'Year 3'),
+        (4, 'Year 4'),
+    ]
+    
+    registration_number = models.CharField(max_length=50, unique=True)
+    full_name = models.CharField(max_length=255)
+    year_of_study = models.IntegerField(choices=YEAR_CHOICES)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.registration_number} - {self.full_name}"
+
+    class Meta:
+        verbose_name = "Valid Student"
+        verbose_name_plural = "Valid Students"
+
+
+class StudentProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
+    valid_student = models.ForeignKey(ValidStudent, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.valid_student.registration_number}"
+
+    class Meta:
+        verbose_name = "Student Profile"
+        verbose_name_plural = "Student Profiles"
+
+
 class Queue(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
