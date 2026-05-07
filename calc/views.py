@@ -4,6 +4,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.http import HttpResponse
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 from .models import Queue, Customer, Service, QueueEntry
 
 # Home view - renders the home.html template
@@ -52,11 +57,12 @@ def index(request):
 
 @staff_member_required
 def queue_control_dashboard(request, queue_id=None):
+    today = timezone.localdate()
     queue = Queue.objects.get(id=queue_id) if queue_id else Queue.objects.first()
     current_entry = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at").first() if queue else None
     waiting_list = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at") if queue else QueueEntry.objects.none()
     total_waiting = waiting_list.count()
-    served_today = QueueEntry.objects.filter(queue=queue, status="completed").count() if queue else 0
+    served_today = QueueEntry.objects.filter(queue=queue, status="completed", completed_at__date=today).count() if queue else 0
 
     context = {
         "queue": queue,
@@ -67,6 +73,152 @@ def queue_control_dashboard(request, queue_id=None):
         "queue_paused": queue.is_paused if queue else False,
     }
     return render(request, "admin_queue_dashboard.html", context)
+
+
+@staff_member_required
+def staff_reports(request):
+    today = timezone.localdate()
+
+    completed_today_qs = QueueEntry.objects.filter(status="completed", completed_at__date=today)
+    total_served_today = completed_today_qs.count()
+    active_waiting_count = QueueEntry.objects.filter(status="waiting").count()
+    skipped_today = QueueEntry.objects.filter(status="skipped", created_at__date=today).count()
+    total_tickets_today = QueueEntry.objects.filter(created_at__date=today).count()
+
+    wait_deltas = []
+    for entry in completed_today_qs:
+        end_time = entry.served_at or entry.completed_at
+        if end_time and entry.created_at:
+            wait_deltas.append((end_time - entry.created_at).total_seconds() / 60.0)
+
+    average_waiting_minutes = round(sum(wait_deltas) / len(wait_deltas), 1) if wait_deltas else 0.0
+
+    created_hours = {hour: 0 for hour in range(24)}
+    completed_hours = {hour: 0 for hour in range(24)}
+    for entry in QueueEntry.objects.filter(created_at__date=today):
+        hour = entry.created_at.astimezone(timezone.get_current_timezone()).hour
+        created_hours[hour] += 1
+    for entry in completed_today_qs:
+        if entry.completed_at:
+            hour = entry.completed_at.astimezone(timezone.get_current_timezone()).hour
+            completed_hours[hour] += 1
+
+    hourly_metrics = []
+    for hour in range(24):
+        hourly_metrics.append({
+            "hour": f"{hour:02d}:00",
+            "demand": created_hours.get(hour, 0),
+            "throughput": completed_hours.get(hour, 0),
+        })
+
+    context = {
+        "today": today,
+        "total_served_today": total_served_today,
+        "active_waiting_count": active_waiting_count,
+        "average_waiting_minutes": average_waiting_minutes,
+        "skipped_today": skipped_today,
+        "total_tickets_today": total_tickets_today,
+        "hourly_metrics": hourly_metrics,
+    }
+    return render(request, "staff_reports.html", context)
+
+
+@staff_member_required
+def export_reports_pdf(request):
+    today = timezone.localdate()
+
+    completed_today_qs = QueueEntry.objects.filter(status="completed", completed_at__date=today)
+    total_served_today = completed_today_qs.count()
+    active_waiting_count = QueueEntry.objects.filter(status="waiting").count()
+    skipped_today = QueueEntry.objects.filter(status="skipped", created_at__date=today).count()
+    total_tickets_today = QueueEntry.objects.filter(created_at__date=today).count()
+
+    wait_deltas = []
+    for entry in completed_today_qs:
+        end_time = entry.served_at or entry.completed_at
+        if end_time and entry.created_at:
+            wait_deltas.append((end_time - entry.created_at).total_seconds() / 60.0)
+
+    average_waiting_minutes = round(sum(wait_deltas) / len(wait_deltas), 1) if wait_deltas else 0.0
+
+    created_hours = {hour: 0 for hour in range(24)}
+    completed_hours = {hour: 0 for hour in range(24)}
+    for entry in QueueEntry.objects.filter(created_at__date=today):
+        hour = entry.created_at.astimezone(timezone.get_current_timezone()).hour
+        created_hours[hour] += 1
+    for entry in completed_today_qs:
+        if entry.completed_at:
+            hour = entry.completed_at.astimezone(timezone.get_current_timezone()).hour
+            completed_hours[hour] += 1
+
+    hourly_metrics = []
+    for hour in range(24):
+        hourly_metrics.append({
+            "hour": f"{hour:02d}:00",
+            "demand": created_hours.get(hour, 0),
+            "throughput": completed_hours.get(hour, 0),
+        })
+
+    # Generate PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="queue_report_{today}.pdf"'
+
+    doc = SimpleDocTemplate(response, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Title
+    title = Paragraph("DUCE SmartCard Center Queue Report", styles['Title'])
+    elements.append(title)
+    elements.append(Spacer(1, 12))
+
+    # Report Date
+    date_text = Paragraph(f"Report Date: {today}", styles['Normal'])
+    elements.append(date_text)
+    elements.append(Spacer(1, 12))
+
+    # Summary Table
+    summary_data = [
+        ['Metric', 'Value'],
+        ['Total Tickets Created Today', str(total_tickets_today)],
+        ['Total Served Today', str(total_served_today)],
+        ['Active Waiting Count', str(active_waiting_count)],
+        ['Skipped Today', str(skipped_today)],
+        ['Average Wait Time (minutes)', str(average_waiting_minutes)],
+    ]
+    summary_table = Table(summary_data)
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 24))
+
+    # Hourly Table
+    hourly_data = [['Hour', 'Demand', 'Throughput']]
+    for metric in hourly_metrics:
+        hourly_data.append([metric['hour'], str(metric['demand']), str(metric['throughput'])])
+    hourly_table = Table(hourly_data)
+    hourly_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    elements.append(hourly_table)
+
+    doc.build(elements)
+    return response
 
 
 def queue_display(request):
@@ -144,7 +296,10 @@ def join_queue(request, queue_id):
 def serve_current(request):
     current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
     if current:
+        now = timezone.now()
         current.status = "completed"
+        current.served_at = now
+        current.completed_at = now
         current.save()
     return redirect("queue_control_dashboard")
 
@@ -154,6 +309,7 @@ def skip_current(request):
     current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
     if current:
         current.status = "skipped"
+        current.completed_at = timezone.now()
         current.save()
     return redirect("queue_control_dashboard")
 
