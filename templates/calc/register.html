@@ -72,30 +72,26 @@
         <!-- Username Field -->
         <div class="form-group">
             <label for="{{ form.username.id_for_label }}" class="field-label">Username *</label>
+            {{ form.username }}
             {% if form.username.errors %}
-                {{ form.username|add_error_class:"is-invalid" }}
                 <div class="invalid-feedback d-block">
                     {% for error in form.username.errors %}
                         <small>{{ error }}</small>
                     {% endfor %}
                 </div>
-            {% else %}
-                {{ form.username }}
             {% endif %}
         </div>
 
         <!-- Password Field -->
         <div class="form-group">
             <label for="{{ form.password1.id_for_label }}" class="field-label">Password *</label>
+            {{ form.password1 }}
             {% if form.password1.errors %}
-                {{ form.password1|add_error_class:"is-invalid" }}
                 <div class="invalid-feedback d-block">
                     {% for error in form.password1.errors %}
                         <small>{{ error }}</small>
                     {% endfor %}
                 </div>
-            {% else %}
-                {{ form.password1 }}
             {% endif %}
             {% if form.password1.help_text %}
             <small class="small-text d-block">{{ form.password1.help_text|safe }}</small>
@@ -105,15 +101,13 @@
         <!-- Confirm Password Field -->
         <div class="form-group">
             <label for="{{ form.password2.id_for_label }}" class="field-label">Confirm Password *</label>
+            {{ form.password2 }}
             {% if form.password2.errors %}
-                {{ form.password2|add_error_class:"is-invalid" }}
                 <div class="invalid-feedback d-block">
                     {% for error in form.password2.errors %}
                         <small>{{ error }}</small>
                     {% endfor %}
                 </div>
-            {% else %}
-                {{ form.password2 }}
             {% endif %}
         </div>
 
