@@ -9,7 +9,28 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-from .models import Queue, Customer, Service, QueueEntry
+from django import forms
+from .models import Queue, Customer, Service, QueueEntry, ValidStudent, StudentProfile
+
+# Custom registration form with registration_number field
+class StudentRegistrationForm(UserCreationForm):
+    registration_number = forms.CharField(
+        max_length=50,
+        required=True,
+        help_text="Enter your student registration number",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., STU001'})
+    )
+
+    class Meta:
+        from django.contrib.auth.models import User
+        model = User
+        fields = ('registration_number', 'username', 'password1', 'password2')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].widget.attrs.update({'class': 'form-control'})
+        self.fields['password1'].widget.attrs.update({'class': 'form-control'})
+        self.fields['password2'].widget.attrs.update({'class': 'form-control'})
 
 # Home view - renders the home.html template
 def home(request):
@@ -18,13 +39,25 @@ def home(request):
 # Register view
 def register(request):
     if request.method == 'POST':  # When the form is submitted
-        form = UserCreationForm(request.POST)  # Bind data to the form
+        form = StudentRegistrationForm(request.POST)  # Bind data to the form
+        registration_number = request.POST.get('registration_number')
+        
+        # Validate that student is registered
+        try:
+            valid_student = ValidStudent.objects.get(registration_number=registration_number, is_active=True)
+        except ValidStudent.DoesNotExist:
+            # Return error if not a registered student
+            form.add_error('registration_number', 'You are not a registered student')
+            return render(request, 'calc/register.html', {'form': form, 'error': 'You are not a registered student'})
+        
         if form.is_valid():  # Check if the form data is valid
             user = form.save()  # Save the user to the database
+            # Create StudentProfile linking user to valid_student
+            StudentProfile.objects.create(user=user, valid_student=valid_student)
             login(request, user)  # Log the user in automatically
             return redirect('dashboard')  # Redirect to dashboard after successful registration
     else:
-        form = UserCreationForm()  # Create a blank form for GET request
+        form = StudentRegistrationForm()  # Create a blank form for GET request
     return render(request, 'calc/register.html', {'form': form})  # Render the register form in the template
 
 # Login view
