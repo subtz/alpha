@@ -114,6 +114,12 @@
         <p>{{ queue.description }}</p>
     {% endif %}
 
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+    {% endif %}
+
     <form method="POST" class="join-queue-form">
         {% csrf_token %}
 

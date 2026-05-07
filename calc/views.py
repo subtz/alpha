@@ -277,10 +277,28 @@ def queue_list(request):
     context = {'queues': queues}
     return render(request, 'queue_list.html', context)
 
+@login_required
 def join_queue(request, queue_id):
     """Allow a customer to join a queue and show a success page with ticket info."""
     queue = Queue.objects.get(id=queue_id)
     services = Service.objects.filter(is_active=True)
+
+    try:
+        student_year = request.user.student_profile.valid_student.year_of_study
+    except (AttributeError, StudentProfile.DoesNotExist):
+        student_year = None
+
+    allowed_years = [
+        int(year.strip()) for year in queue.allowed_years.split(',')
+        if year.strip().isdigit()
+    ]
+
+    if student_year is None or student_year not in allowed_years:
+        return render(request, 'join_queue.html', {
+            'queue': queue,
+            'services': services,
+            'error': 'Service not available for your year of study',
+        })
 
     if request.method == 'POST':
         service_id = request.POST.get('service')
