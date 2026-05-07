@@ -42,6 +42,12 @@ class StudentProfile(models.Model):
 class Queue(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
+    allowed_years = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Comma-separated allowed years, e.g. 1,2,3,4"
+    )
     is_active = models.BooleanField(default=True)
     is_paused = models.BooleanField(default=False)
     max_capacity = models.PositiveIntegerField(default=50)
