@@ -1,4 +1,11 @@
-<!-- calc/templates/dashboard.html -->
-<h2>Dashboard</h2>
-<p>Welcome back, {{ user.username }}!</p>
-<a href="{% url 'logout' %}">Logout</a>  <!-- Logout link -->
+{% extends 'calc/base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2>Dashboard</h2>
+    <p>Welcome back, {{ user.username }}!</p>
+    <a href="{% url 'logout' %}" class="btn btn-primary">Logout</a>
+</div>
+{% endblock %}
