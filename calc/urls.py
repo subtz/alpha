@@ -15,7 +15,7 @@ urlpatterns = [
     path('', views.home, name='home'),
 
     # Login route — renders login.html template
-    path('login/', auth_views.LoginView.as_view(template_name='calc/login.html'), name='login'),
+    path('login/', views.login_view, name='login'),
 
     # Logout route — logs the user out and redirects
     path('logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
