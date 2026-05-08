@@ -52,8 +52,11 @@ def register(request):
         
         if form.is_valid():  # Check if the form data is valid
             user = form.save()  # Save the user to the database
-            # Create StudentProfile linking user to valid_student
-            StudentProfile.objects.create(user=user, valid_student=valid_student)
+            # Ensure StudentProfile exists for the new user
+            StudentProfile.objects.get_or_create(
+                user=user,
+                defaults={'valid_student': valid_student}
+            )
             login(request, user)  # Log the user in automatically
             return redirect('dashboard')  # Redirect to dashboard after successful registration
     else:
@@ -76,7 +79,8 @@ def login_view(request):
 # Dashboard view - protected by login_required to ensure only authenticated users can access it
 @login_required
 def dashboard(request):
-    return render(request, 'dashboard.html')  # Render the dashboard template
+    student_profile = StudentProfile.objects.filter(user=request.user).select_related('valid_student').first()
+    return render(request, 'calc/dashboard.html', {'student_profile': student_profile})  # Render the dashboard template
 
 # Base view
 def base(request):
@@ -283,10 +287,8 @@ def join_queue(request, queue_id):
     queue = Queue.objects.get(id=queue_id)
     services = Service.objects.filter(is_active=True)
 
-    try:
-        student_year = request.user.student_profile.valid_student.year_of_study
-    except (AttributeError, StudentProfile.DoesNotExist):
-        student_year = None
+    student_profile = StudentProfile.objects.filter(user=request.user).select_related('valid_student').first()
+    student_year = student_profile.valid_student.year_of_study if student_profile else None
 
     allowed_years = [
         int(year.strip()) for year in queue.allowed_years.split(',')
