@@ -1,125 +1,171 @@
 {% extends 'calc/base.html' %}
 
-{% block title %}Student Registration{% endblock %}
-
 {% block head %}
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <style>
-    .register-container {
-        max-width: 500px;
-        margin: 50px auto;
-        padding: 30px;
-        border-radius: 10px;
+    /* Base styles */
+    body {
         background-color: #f8f9fa;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        font-family: Tahoma, sans-serif;
+        margin: 0;
+        padding: 0;
     }
-    .form-title {
+
+    /* Styling for signup button */
+    #signup_button {
+        background-color: #42b72a;
+        width: 70px;
         text-align: center;
-        margin-bottom: 30px;
+        padding: 4px;
+        font-size: 20px;
+        border-radius: 8px;
+        float: right;
     }
-    .error-message {
-        margin-bottom: 20px;
+
+    /* Login form container */
+    #login_bar {
+        background-color: white;
+        width: 90%;
+        max-width: 800px;
+        border-radius: 8px;
+        margin: auto;
+        margin-top: 50px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-    .field-label {
-        font-weight: 500;
-        margin-bottom: 8px;
-    }
-    .form-group {
-        margin-bottom: 20px;
-    }
-    .small-text {
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-top: 5px;
-    }
-    .btn-register {
+
+    /* Input field styles */
+    #text {
         width: 100%;
-        padding: 10px;
-        font-weight: 600;
+        max-width: 300px;
+        border-radius: 8px;
+        margin: auto;
+        padding: 4px;
+        border: solid 1px #aaa;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+
+    /* Submit button styling */
+    #submit {
+        background-color: #3c5a99;
+        width: 100%;
+        max-width: 200px;
+        border-radius: 8px;
+        padding: 8px;
+        color: white;
+        font-weight: bold;
+        margin-top: 15px;
+        border: none;
+        cursor: pointer;
+    }
+
+    /* Responsive design tweaks */
+    @media (max-width: 768px) {
+
+        #login_bar {
+            width: 95%;
+            padding: 15px;
+        }
+
+        #text {
+            width: 80%;
+            font-size: 12px;
+        }
+
+        #submit {
+            width: 100%;
+            font-size: 14px;
+        }
+    }
+
+    /* Small screen adjustments */
+    @media (max-width: 480px) {
+
+        #text {
+            width: 90%;
+        }
+
+        #submit {
+            width: 100%;
+            font-size: 16px;
+        }
+    }
+
+    .error-message {
+        color: red;
+        margin-bottom: 15px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="register-container">
-    <h1 class="form-title h3">Student Registration</h1>
+<div id="login_bar">
 
-    {% if error %}
-    <div class="alert alert-danger error-message" role="alert">
-        <strong>Registration Error:</strong> {{ error }}
-    </div>
+    <h2>Student Registration</h2>
+
+    {% if form.errors %}
+        <div class="error-message">
+            Please correct the errors below.
+        </div>
     {% endif %}
 
-    <form method="post" novalidate>
+    <form method="POST">
+
         {% csrf_token %}
 
-        <!-- Registration Number Field -->
-        <div class="form-group">
-            <label for="{{ form.registration_number.id_for_label }}" class="field-label">Registration Number *</label>
-            {% if form.registration_number.errors %}
-                <input type="text" class="form-control is-invalid" id="{{ form.registration_number.id_for_label }}" name="registration_number" placeholder="e.g., STU001" required>
-                <div class="invalid-feedback d-block">
-                    {% for error in form.registration_number.errors %}
-                        <small>{{ error }}</small>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <input type="text" class="form-control" id="{{ form.registration_number.id_for_label }}" name="registration_number" placeholder="e.g., STU001" required>
-            {% endif %}
-            <small class="small-text">Your unique student registration number from DUCE</small>
-        </div>
+        <!-- Registration Number -->
+        <input
+            type="text"
+            id="text"
+            name="registration_number"
+            placeholder="Registration Number"
+            required
+        ><br><br>
 
-        <!-- Username Field -->
-        <div class="form-group">
-            <label for="{{ form.username.id_for_label }}" class="field-label">Username *</label>
-            {{ form.username }}
-            {% if form.username.errors %}
-                <div class="invalid-feedback d-block">
-                    {% for error in form.username.errors %}
-                        <small>{{ error }}</small>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
+        <!-- Username -->
+        <input
+            type="text"
+            id="text"
+            name="username"
+            placeholder="Input Username"
+            required
+        ><br><br>
 
-        <!-- Password Field -->
-        <div class="form-group">
-            <label for="{{ form.password1.id_for_label }}" class="field-label">Password *</label>
-            {{ form.password1 }}
-            {% if form.password1.errors %}
-                <div class="invalid-feedback d-block">
-                    {% for error in form.password1.errors %}
-                        <small>{{ error }}</small>
-                    {% endfor %}
-                </div>
-            {% endif %}
-            {% if form.password1.help_text %}
-            <small class="small-text d-block">{{ form.password1.help_text|safe }}</small>
-            {% endif %}
-        </div>
+        <!-- Email -->
+        <input
+            type="email"
+            id="text"
+            name="email"
+            placeholder="Email Address"
+            required
+        ><br><br>
 
-        <!-- Confirm Password Field -->
-        <div class="form-group">
-            <label for="{{ form.password2.id_for_label }}" class="field-label">Confirm Password *</label>
-            {{ form.password2 }}
-            {% if form.password2.errors %}
-                <div class="invalid-feedback d-block">
-                    {% for error in form.password2.errors %}
-                        <small>{{ error }}</small>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
+        <!-- Password -->
+        <input
+            type="password"
+            id="text"
+            name="password1"
+            placeholder="Input Password"
+            required
+        ><br><br>
+
+        <!-- Confirm Password -->
+        <input
+            type="password"
+            id="text"
+            name="password2"
+            placeholder="Re-enter Password"
+            required
+        ><br><br>
 
         <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary btn-register">Register</button>
+        <input
+            type="submit"
+            id="submit"
+            value="Register"
+        ><br>
 
-        <!-- Login Link -->
-        <div class="text-center mt-3">
-            <small class="text-muted">
-                Already have an account? <a href="{% url 'login' %}" class="text-decoration-none">Login here</a>
-            </small>
-        </div>
     </form>
 </div>
 {% endblock %}

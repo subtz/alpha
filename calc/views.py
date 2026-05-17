@@ -1,377 +1,493 @@
+# ==================================================
+# CORE IMPORTS
+# ==================================================
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
+from django.utils import timezone
+from django.db import transaction
+
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.utils import timezone
-from django.http import HttpResponse
+from django.contrib.auth.models import User
+from django import forms
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer
+)
 from reportlab.lib.styles import getSampleStyleSheet
-from django import forms
-from .models import Queue, Customer, Service, QueueEntry, ValidStudent, StudentProfile
 
-# Custom registration form with registration_number field
+from .models import (
+    Queue,
+    Customer,
+    Service,
+    QueueEntry,
+    ValidStudent,
+    StudentProfile
+)
+
+# ==================================================
+# FORMS
+# ==================================================
 class StudentRegistrationForm(UserCreationForm):
-    registration_number = forms.CharField(
-        max_length=50,
-        required=True,
-        help_text="Enter your student registration number",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., STU001'})
-    )
+
+    registration_number = forms.CharField(max_length=50)
+
+    email = forms.EmailField(required=True)
 
     class Meta:
-        from django.contrib.auth.models import User
         model = User
-        fields = ('registration_number', 'username', 'password1', 'password2')
+        fields = (
+            'registration_number',
+            'username',
+            'email',
+            'password1',
+            'password2'
+        )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['username'].widget.attrs.update({'class': 'form-control'})
-        self.fields['password1'].widget.attrs.update({'class': 'form-control'})
-        self.fields['password2'].widget.attrs.update({'class': 'form-control'})
 
-# Home view - renders the home.html template
+# ==================================================
+# BASIC PAGES
+# ==================================================
 def home(request):
-    return render(request, 'calc/home.html')  # Pass the request to home.html and render it
 
-# Register view
-def register(request):
-    if request.method == 'POST':  # When the form is submitted
-        form = StudentRegistrationForm(request.POST)  # Bind data to the form
-        registration_number = request.POST.get('registration_number')
-        
-        # Validate that student is registered
-        try:
-            valid_student = ValidStudent.objects.get(registration_number=registration_number, is_active=True)
-        except ValidStudent.DoesNotExist:
-            # Return error if not a registered student
-            form.add_error('registration_number', 'You are not a registered student')
-            return render(request, 'calc/register.html', {'form': form, 'error': 'You are not a registered student'})
-        
-        if form.is_valid():  # Check if the form data is valid
-            user = form.save()  # Save the user to the database
-            # Ensure StudentProfile exists for the new user
-            StudentProfile.objects.get_or_create(
-                user=user,
-                defaults={'valid_student': valid_student}
-            )
-            login(request, user)  # Log the user in automatically
-            return redirect('dashboard')  # Redirect to dashboard after successful registration
-    else:
-        form = StudentRegistrationForm()  # Create a blank form for GET request
-    return render(request, 'calc/register.html', {'form': form})  # Render the register form in the template
-
-# Login view
-def login_view(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        print(f"Authenticated user: {user}")  # Debug logging
-        if user is not None:
-            login(request, user)
-            return redirect('dashboard')  # or another view like 'home'
-        else:
-            return render(request, 'calc/login.html', {'error': 'Invalid credentials'})
-    return render(request, 'calc/login.html')
-
-# Dashboard view - protected by login_required to ensure only authenticated users can access it
-@login_required
-def dashboard(request):
-    student_profile = StudentProfile.objects.filter(user=request.user).select_related('valid_student').first()
-    return render(request, 'calc/dashboard.html', {'student_profile': student_profile})  # Render the dashboard template
-
-# Base view
-def base(request):
-    return render(request, 'calc/base.html')
-
-# Index view
-def index(request):
     return render(request, 'calc/home.html')
 
-# Smart Queue views
 
-@staff_member_required
-def queue_control_dashboard(request, queue_id=None):
-    today = timezone.localdate()
-    queue = Queue.objects.get(id=queue_id) if queue_id else Queue.objects.first()
-    current_entry = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at").first() if queue else None
-    waiting_list = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at") if queue else QueueEntry.objects.none()
-    total_waiting = waiting_list.count()
-    served_today = QueueEntry.objects.filter(queue=queue, status="completed", completed_at__date=today).count() if queue else 0
+def base(request):
 
-    context = {
-        "queue": queue,
-        "current_entry": current_entry,
-        "waiting_list": waiting_list,
-        "total_waiting": total_waiting,
-        "served_today": served_today,
-        "queue_paused": queue.is_paused if queue else False,
-    }
-    return render(request, "admin_queue_dashboard.html", context)
+    return render(request, 'calc/base.html')
 
 
-@staff_member_required
-def staff_reports(request):
-    today = timezone.localdate()
+@login_required
+def dashboard(request):
 
-    completed_today_qs = QueueEntry.objects.filter(status="completed", completed_at__date=today)
-    total_served_today = completed_today_qs.count()
-    active_waiting_count = QueueEntry.objects.filter(status="waiting").count()
-    skipped_today = QueueEntry.objects.filter(status="skipped", created_at__date=today).count()
-    total_tickets_today = QueueEntry.objects.filter(created_at__date=today).count()
+    profile = StudentProfile.objects.filter(
+        user=request.user
+    ).first()
 
-    wait_deltas = []
-    for entry in completed_today_qs:
-        end_time = entry.served_at or entry.completed_at
-        if end_time and entry.created_at:
-            wait_deltas.append((end_time - entry.created_at).total_seconds() / 60.0)
-
-    average_waiting_minutes = round(sum(wait_deltas) / len(wait_deltas), 1) if wait_deltas else 0.0
-
-    created_hours = {hour: 0 for hour in range(24)}
-    completed_hours = {hour: 0 for hour in range(24)}
-    for entry in QueueEntry.objects.filter(created_at__date=today):
-        hour = entry.created_at.astimezone(timezone.get_current_timezone()).hour
-        created_hours[hour] += 1
-    for entry in completed_today_qs:
-        if entry.completed_at:
-            hour = entry.completed_at.astimezone(timezone.get_current_timezone()).hour
-            completed_hours[hour] += 1
-
-    hourly_metrics = []
-    for hour in range(24):
-        hourly_metrics.append({
-            "hour": f"{hour:02d}:00",
-            "demand": created_hours.get(hour, 0),
-            "throughput": completed_hours.get(hour, 0),
-        })
-
-    context = {
-        "today": today,
-        "total_served_today": total_served_today,
-        "active_waiting_count": active_waiting_count,
-        "average_waiting_minutes": average_waiting_minutes,
-        "skipped_today": skipped_today,
-        "total_tickets_today": total_tickets_today,
-        "hourly_metrics": hourly_metrics,
-    }
-    return render(request, "staff_reports.html", context)
+    return render(request, 'calc/dashboard.html', {
+        'student_profile': profile
+    })
 
 
-@staff_member_required
-def export_reports_pdf(request):
-    today = timezone.localdate()
+# ==================================================
+# AUTH SYSTEM
+# ==================================================
+def register(request):
 
-    completed_today_qs = QueueEntry.objects.filter(status="completed", completed_at__date=today)
-    total_served_today = completed_today_qs.count()
-    active_waiting_count = QueueEntry.objects.filter(status="waiting").count()
-    skipped_today = QueueEntry.objects.filter(status="skipped", created_at__date=today).count()
-    total_tickets_today = QueueEntry.objects.filter(created_at__date=today).count()
+    if request.method == 'POST':
 
-    wait_deltas = []
-    for entry in completed_today_qs:
-        end_time = entry.served_at or entry.completed_at
-        if end_time and entry.created_at:
-            wait_deltas.append((end_time - entry.created_at).total_seconds() / 60.0)
+        form = StudentRegistrationForm(request.POST)
 
-    average_waiting_minutes = round(sum(wait_deltas) / len(wait_deltas), 1) if wait_deltas else 0.0
+        reg_no = request.POST.get('registration_number')
 
-    created_hours = {hour: 0 for hour in range(24)}
-    completed_hours = {hour: 0 for hour in range(24)}
-    for entry in QueueEntry.objects.filter(created_at__date=today):
-        hour = entry.created_at.astimezone(timezone.get_current_timezone()).hour
-        created_hours[hour] += 1
-    for entry in completed_today_qs:
-        if entry.completed_at:
-            hour = entry.completed_at.astimezone(timezone.get_current_timezone()).hour
-            completed_hours[hour] += 1
+        try:
+            valid_student = ValidStudent.objects.get(
+                registration_number=reg_no,
+                is_active=True
+            )
 
-    hourly_metrics = []
-    for hour in range(24):
-        hourly_metrics.append({
-            "hour": f"{hour:02d}:00",
-            "demand": created_hours.get(hour, 0),
-            "throughput": completed_hours.get(hour, 0),
-        })
+        except ValidStudent.DoesNotExist:
+            return HttpResponse("Invalid registration number")
 
-    # Generate PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="queue_report_{today}.pdf"'
+        if form.is_valid():
 
-    doc = SimpleDocTemplate(response, pagesize=letter)
-    styles = getSampleStyleSheet()
-    elements = []
+            user = form.save(commit=False)
 
-    # Title
-    title = Paragraph("DUCE SmartCard Center Queue Report", styles['Title'])
-    elements.append(title)
-    elements.append(Spacer(1, 12))
+            user.email = form.cleaned_data['email']
 
-    # Report Date
-    date_text = Paragraph(f"Report Date: {today}", styles['Normal'])
-    elements.append(date_text)
-    elements.append(Spacer(1, 12))
+            user.save()
 
-    # Summary Table
-    summary_data = [
-        ['Metric', 'Value'],
-        ['Total Tickets Created Today', str(total_tickets_today)],
-        ['Total Served Today', str(total_served_today)],
-        ['Active Waiting Count', str(active_waiting_count)],
-        ['Skipped Today', str(skipped_today)],
-        ['Average Wait Time (minutes)', str(average_waiting_minutes)],
-    ]
-    summary_table = Table(summary_data)
-    summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
-    elements.append(summary_table)
-    elements.append(Spacer(1, 24))
+            StudentProfile.objects.create(
+                user=user,
+                valid_student=valid_student
+            )
 
-    # Hourly Table
-    hourly_data = [['Hour', 'Demand', 'Throughput']]
-    for metric in hourly_metrics:
-        hourly_data.append([metric['hour'], str(metric['demand']), str(metric['throughput'])])
-    hourly_table = Table(hourly_data)
-    hourly_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
-    elements.append(hourly_table)
+            login(request, user)
 
-    doc.build(elements)
-    return response
+            return redirect('dashboard')
+
+    else:
+        form = StudentRegistrationForm()
+
+    return render(request, 'calc/register.html', {
+        'form': form
+    })
 
 
-def queue_display(request):
-    queue = Queue.objects.filter(is_active=True).first()
-    now_serving = QueueEntry.objects.filter(queue=queue, status="serving").order_by("created_at").first() if queue else None
-    next_ticket = QueueEntry.objects.filter(queue=queue, status="waiting").order_by("created_at").first() if queue else None
-    total_waiting = QueueEntry.objects.filter(queue=queue, status="waiting").count() if queue else 0
-    queue_status = "Paused" if queue and queue.is_paused else "Active" if queue else "No Active Queue"
+def login_view(request):
 
-    context = {
-        "queue": queue,
-        "now_serving": now_serving,
-        "next_ticket": next_ticket,
-        "total_waiting": total_waiting,
-        "queue_status": queue_status,
-    }
-    return render(request, "display.html", context)
+    if request.method == 'POST':
+
+        user = authenticate(
+            request,
+            username=request.POST.get('username'),
+            password=request.POST.get('password')
+        )
+
+        if user:
+
+            login(request, user)
+
+            return redirect('dashboard')
+
+        return HttpResponse("Invalid credentials")
+
+    return render(request, 'calc/login.html')
 
 
+# ==================================================
+# STUDENT QUEUE SYSTEM
+# ==================================================
+@login_required
 def queue_list(request):
-    """Display all active queues that customers can join."""
-    queues = Queue.objects.all()
-    context = {'queues': queues}
-    return render(request, 'queue_list.html', context)
+
+    queues = Queue.objects.filter(is_active=True)
+
+    return render(request, 'calc/queue_list.html', {
+        'queues': queues
+    })
+
 
 @login_required
 def join_queue(request, queue_id):
-    """Allow a customer to join a queue and show a success page with ticket info."""
-    queue = Queue.objects.get(id=queue_id)
-    services = Service.objects.filter(is_active=True)
 
-    student_profile = StudentProfile.objects.filter(user=request.user).select_related('valid_student').first()
-    student_year = student_profile.valid_student.year_of_study if student_profile else None
+    queue = get_object_or_404(
+        Queue,
+        id=queue_id
+    )
 
-    allowed_years = [
-        int(year.strip()) for year in queue.allowed_years.split(',')
-        if year.strip().isdigit()
-    ]
+    if queue.is_paused:
+        return HttpResponse("Queue is paused")
 
-    if student_year is None or student_year not in allowed_years:
-        return render(request, 'join_queue.html', {
-            'queue': queue,
-            'services': services,
-            'error': 'Service not available for your year of study',
-        })
+    profile = StudentProfile.objects.filter(
+        user=request.user
+    ).first()
+
+    if not profile:
+        return HttpResponse("Student profile missing")
 
     if request.method == 'POST':
-        service_id = request.POST.get('service')
-        service = Service.objects.get(id=service_id)
 
-        if request.user.is_authenticated and request.user.email:
-            customer, created = Customer.objects.get_or_create(
-                email=request.user.email,
-                defaults={
-                    'name': request.user.get_full_name() or request.user.username,
-                    'phone': ''
-                }
-            )
-        else:
-            name = request.POST.get('name')
-            phone = request.POST.get('phone')
-            customer, created = Customer.objects.get_or_create(
-                email=f"{phone}@queue.local",
-                defaults={'name': name, 'phone': phone}
-            )
-
-        last_entry = QueueEntry.objects.filter(queue=queue).order_by('-position').first()
-        next_position = (last_entry.position + 1) if last_entry else 1
-
-        entry = QueueEntry.objects.create(
-            queue=queue,
-            customer=customer,
-            service=service,
-            position=next_position,
-            status='waiting'
+        service = get_object_or_404(
+            Service,
+            id=request.POST.get('service')
         )
 
-        position = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('created_at').count()
+        if not request.user.email:
+            return HttpResponse("Your account has no email address.")
 
-        return render(request, 'queue_join_success.html', {
+        customer, created = Customer.objects.get_or_create(
+            email=request.user.email,
+            defaults={
+                'name': request.user.username
+            }
+        )
+
+        current_count = QueueEntry.objects.filter(
+            queue=queue,
+            status__in=['waiting', 'serving']
+        ).count()
+
+        if current_count >= queue.max_capacity:
+            return HttpResponse("Queue is full")
+
+        with transaction.atomic():
+
+            last = QueueEntry.objects.filter(
+                queue=queue
+            ).order_by('-position').first()
+
+            next_position = (
+                last.position + 1
+                if last else 1
+            )
+
+            entry = QueueEntry.objects.create(
+                queue=queue,
+                customer=customer,
+                service=service,
+                position=next_position,
+                status='waiting'
+            )
+
+        return render(request, 'calc/queue_join_success.html', {
             'entry': entry,
-            'position': position,
-            'queue': queue,
+            'queue': queue
         })
 
-    context = {'queue': queue, 'services': services}
-    return render(request, 'join_queue.html', context)
+    services = Service.objects.filter(
+        is_active=True
+    )
+
+    return render(request, 'calc/join_queue.html', {
+        'queue': queue,
+        'services': services
+    })
 
 
+@login_required
+def queue_display(request):
+
+    queue = Queue.objects.filter(
+        is_active=True
+    ).first()
+
+    if not queue:
+        return HttpResponse("No active queue")
+
+    now_serving = QueueEntry.objects.filter(
+        queue=queue,
+        status='serving'
+    ).first()
+
+    next_ticket = QueueEntry.objects.filter(
+        queue=queue,
+        status='waiting'
+    ).order_by('position').first()
+
+    return render(request, 'calc/display.html', {
+        'queue': queue,
+        'now_serving': now_serving,
+        'next_ticket': next_ticket,
+        'queue_status': (
+            "Paused"
+            if queue.is_paused
+            else "Active"
+        )
+    })
+
+
+# ==================================================
+# STAFF DASHBOARD - QUEUE SELECTION
+# ==================================================
 @staff_member_required
-def serve_current(request):
-    current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
+def staff_dashboard_home(request):
+
+    queues = Queue.objects.filter(
+        is_active=True
+    )
+
+    return render(request, 'calc/admin_queue_dashboard.html', {
+        'queues': queues
+    })
+
+
+# ==================================================
+# STAFF DASHBOARD - QUEUE CONTROL
+# ==================================================
+@staff_member_required
+def queue_control_dashboard(request, queue_id):
+
+    queue = get_object_or_404(
+        Queue,
+        id=queue_id
+    )
+
+    current_entry = QueueEntry.objects.filter(
+        queue=queue,
+        status='serving'
+    ).first()
+
+    waiting_list = QueueEntry.objects.filter(
+        queue=queue,
+        status='waiting'
+    ).order_by('created_at')
+
+    if not current_entry:
+        current_entry = waiting_list.first()
+
+    return render(request, 'calc/admin_queue_dashboard.html', {
+        'queue': queue,
+        'current_entry': current_entry,
+        'waiting_list': waiting_list,
+        'queue_paused': queue.is_paused
+    })
+
+
+# ==================================================
+# STAFF ACTIONS
+# ==================================================
+@staff_member_required
+def serve_current(request, queue_id):
+
+    now = timezone.now()
+
+    current = QueueEntry.objects.filter(
+        queue_id=queue_id,
+        status='serving'
+    ).first()
+
     if current:
-        now = timezone.now()
-        current.status = "completed"
-        current.served_at = now
+
+        current.status = 'completed'
         current.completed_at = now
+
+        if not current.served_at:
+            current.served_at = now
+
         current.save()
-    return redirect("queue_control_dashboard")
+
+    next_entry = QueueEntry.objects.filter(
+        queue_id=queue_id,
+        status='waiting'
+    ).order_by('created_at').first()
+
+    if next_entry:
+
+        next_entry.status = 'serving'
+        next_entry.served_at = now
+        next_entry.save()
+
+    return redirect(
+        'queue_control_dashboard',
+        queue_id=queue_id
+    )
 
 
 @staff_member_required
-def skip_current(request):
-    current = QueueEntry.objects.filter(status="waiting").order_by("created_at").first()
-    if current:
-        current.status = "skipped"
-        current.completed_at = timezone.now()
-        current.save()
-    return redirect("queue_control_dashboard")
+def skip_current(request, queue_id):
+
+    entry = QueueEntry.objects.filter(
+        queue_id=queue_id,
+        status='serving'
+    ).first()
+
+    if entry:
+
+        entry.status = 'skipped'
+        entry.completed_at = timezone.now()
+        entry.save()
+
+    return redirect(
+        'queue_control_dashboard',
+        queue_id=queue_id
+    )
 
 
 @staff_member_required
 def toggle_queue_pause(request, queue_id):
-    queue = Queue.objects.get(id=queue_id)
+
+    queue = get_object_or_404(
+        Queue,
+        id=queue_id
+    )
+
     queue.is_paused = not queue.is_paused
     queue.save()
-    return redirect("queue_control_dashboard", queue_id=queue.id)
 
+    return redirect(
+        'queue_control_dashboard',
+        queue_id=queue_id
+    )
+
+
+# ==================================================
+# REPORTING SYSTEM
+# ==================================================
+@staff_member_required
+def staff_reports(request):
+
+    today = timezone.localdate()
+
+    served_today = QueueEntry.objects.filter(
+        status='completed',
+        completed_at__date=today
+    ).count()
+
+    waiting = QueueEntry.objects.filter(
+        status='waiting'
+    ).count()
+
+    skipped = QueueEntry.objects.filter(
+        status='skipped'
+    ).count()
+
+    return render(request, 'calc/staff_reports.html', {
+        'today': today,
+        'served_today': served_today,
+        'waiting': waiting,
+        'skipped': skipped
+    })
+
+
+@staff_member_required
+def export_reports_pdf(request):
+
+    today = timezone.localdate()
+
+    response = HttpResponse(
+        content_type='application/pdf'
+    )
+
+    response[
+        'Content-Disposition'
+    ] = f'attachment; filename="report_{today}.pdf"'
+
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=letter
+    )
+
+    styles = getSampleStyleSheet()
+
+    elements = [
+        Paragraph(
+            "Queue Report",
+            styles['Title']
+        ),
+
+        Spacer(1, 20)
+    ]
+
+    data = [
+        ['Metric', 'Value'],
+
+        ['Date', str(today)],
+
+        [
+            'Waiting',
+            QueueEntry.objects.filter(
+                status='waiting'
+            ).count()
+        ],
+
+        [
+            'Served Today',
+
+            QueueEntry.objects.filter(
+                status='completed',
+                completed_at__date=today
+            ).count()
+        ],
+
+        [
+            'Skipped',
+
+            QueueEntry.objects.filter(
+                status='skipped'
+            ).count()
+        ]
+    ]
+
+    table = Table(data)
+
+    table.setStyle(
+        TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ])
+    )
+
+    elements.append(table)
+
+    doc.build(elements)
+
+    return response
