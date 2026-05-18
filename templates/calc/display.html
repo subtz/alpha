@@ -1,221 +1,142 @@
 {% extends 'calc/base.html' %}
 
-{% block title %}DUCE SmartCard Center Display{% endblock %}
-
-{% block head %}
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-
-<style>
-    body {
-        background: #0d1b2a;
-        color: #e0e1dd;
-        min-height: 100vh;
-        overflow: hidden;
-    }
-
-    .display-screen {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        padding: 3rem 2rem;
-        min-height: 100vh;
-    }
-
-    .display-title {
-        font-size: 3.5rem;
-        font-weight: 700;
-        letter-spacing: 0.15em;
-        margin-bottom: 2rem;
-        text-transform: uppercase;
-    }
-
-    .status-card {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 1.5rem;
-        padding: 2rem;
-        width: min(1000px, 100%);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
-    }
-
-    .metric-row {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-        margin-top: 1.5rem;
-    }
-
-    .metric-box {
-        background: rgba(13, 27, 42, 0.9);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-    }
-
-    .metric-label {
-        text-transform: uppercase;
-        letter-spacing: 0.15em;
-        color: #7f8da1;
-        font-size: 0.8rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .metric-value {
-        font-size: 2.8rem;
-        font-weight: 700;
-        color: #ffffff;
-    }
-
-    .small-note {
-        margin-top: 0.5rem;
-        color: #a5b8d3;
-        font-size: 0.95rem;
-    }
-
-    .status-pill {
-        display: inline-block;
-        padding: 0.6rem 1.2rem;
-        border-radius: 999px;
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
-
-    .paused {
-        background: #ff6b6b;
-        color: #1f1f1f;
-    }
-
-    .active {
-        background: #42b72a;
-        color: #081305;
-    }
-
-    .pulse {
-        animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.6; }
-        100% { opacity: 1; }
-    }
-</style>
+{% block title %}
+Queue Control
 {% endblock %}
 
 {% block content %}
-<div class="display-screen">
-    
-    <div class="display-title">DUCE SmartCard Center</div>
 
-    <div class="status-card">
+<div class="container mt-4">
 
-        <!-- TOP ROW -->
-        <div class="metric-row">
+    <div class="card shadow-sm p-4">
 
-            <div class="metric-box">
-                <div class="metric-label">Now Serving</div>
-                <div class="metric-value pulse" id="now-serving">
-                    {% if now_serving %}
-                        {{ now_serving.ticket_number }}
-                    {% else %}
-                        --
-                    {% endif %}
-                </div>
-                <div class="small-note">
-                    {% if now_serving %}
-                        {{ now_serving.customer.name }}
-                    {% else %}
-                        No active ticket
-                    {% endif %}
-                </div>
-            </div>
+        <h2 class="mb-4">
+            Queue Control:
+            {{ queue.name }}
+        </h2>
 
-            <div class="metric-box">
-                <div class="metric-label">Next Ticket</div>
-                <div class="metric-value" id="next-ticket">
-                    {% if next_ticket %}
-                        {{ next_ticket.ticket_number }}
-                    {% else %}
-                        --
-                    {% endif %}
-                </div>
-                <div class="small-note">
-                    {% if next_ticket %}
-                        {{ next_ticket.customer.name }}
-                    {% else %}
-                        No waiting ticket
-                    {% endif %}
-                </div>
-            </div>
+        <!-- CURRENT -->
+        <div class="mb-4">
 
-            <div class="metric-box">
-                <div class="metric-label">Total Waiting</div>
-                <div class="metric-value" id="total-waiting">
-                    {{ total_waiting }}
+            <h4>
+                Now Serving
+            </h4>
+
+            {% if current_entry %}
+
+                <div class="alert alert-success">
+
+                    <h3>
+                        {{ current_entry.ticket_number }}
+                    </h3>
+
+                    <p>
+                        {{ current_entry.customer.name }}
+                    </p>
+
                 </div>
-                <div class="small-note">Students in queue</div>
-            </div>
+
+            {% else %}
+
+                <div class="alert alert-warning">
+
+                    No student currently serving.
+
+                </div>
+
+            {% endif %}
 
         </div>
 
-        <!-- BOTTOM ROW -->
-        <div class="metric-row">
+        <!-- ACTION BUTTONS -->
+        <div class="mb-4 d-flex gap-2">
 
-            <div class="metric-box">
-                <div class="metric-label">Current Queue</div>
-                <div class="metric-value">
-                    {{ queue.name if queue else "--" }}
-                </div>
-            </div>
+            <a href="{% url 'serve_current' queue.id %}"
+               class="btn btn-success">
 
-            <div class="metric-box">
-                <div class="metric-label">Queue Status</div>
-                <div class="metric-value">
-                    <span class="status-pill {% if queue_status == 'Paused' %}paused{% else %}active{% endif %}">
-                        {{ queue_status }}
-                    </span>
-                </div>
-            </div>
+                Next Student
 
-            <div class="metric-box">
-                <div class="metric-label">Live Mode</div>
-                <div class="metric-value">ON</div>
-                <div class="small-note">Auto updating every 3s</div>
-            </div>
+            </a>
+
+            <a href="{% url 'skip_current' queue.id %}"
+               class="btn btn-warning">
+
+                Skip
+
+            </a>
+
+            <a href="{% url 'toggle_queue_pause' queue.id %}"
+               class="btn btn-danger">
+
+                {% if queue_paused %}
+                    Resume Queue
+                {% else %}
+                    Pause Queue
+                {% endif %}
+
+            </a>
 
         </div>
+
+        <!-- WAITING LIST -->
+        <h4 class="mb-3">
+            Waiting Students
+        </h4>
+
+        <table class="table table-bordered">
+
+            <thead>
+
+                <tr>
+
+                    <th>Ticket</th>
+                    <th>Name</th>
+                    <th>Status</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for entry in waiting_list %}
+
+                    <tr>
+
+                        <td>
+                            {{ entry.ticket_number }}
+                        </td>
+
+                        <td>
+                            {{ entry.customer.name }}
+                        </td>
+
+                        <td>
+                            {{ entry.status }}
+                        </td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+
+                        <td colspan="3">
+
+                            No students waiting.
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
 
     </div>
+
 </div>
-
-<!-- 🔥 LIVE AUTO UPDATE SCRIPT -->
-<script>
-    async function refreshDisplay() {
-        try {
-            const response = await fetch(window.location.href);
-            const html = await response.text();
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-
-            // Update only values (smooth update)
-            document.getElementById("now-serving").innerHTML =
-                doc.getElementById("now-serving").innerHTML;
-
-            document.getElementById("next-ticket").innerHTML =
-                doc.getElementById("next-ticket").innerHTML;
-
-            document.getElementById("total-waiting").innerHTML =
-                doc.getElementById("total-waiting").innerHTML;
-
-        } catch (err) {
-            console.log("Refresh error:", err);
-        }
-    }
-
-    setInterval(refreshDisplay, 3000);
-</script>
 
 {% endblock %}

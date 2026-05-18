@@ -1,32 +1,103 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Queues</title>
-</head>
-<body>
+{% extends 'calc/base.html' %}
 
-<h1>Available Queues</h1>
+{% block title %}
+Available Queues
+{% endblock %}
 
-{% for queue in queues %}
-    <div style="border:1px solid #ccc; padding:10px; margin:10px;">
-        <h3>{{ queue.name }}</h3>
-        <p>{{ queue.description }}</p>
+{% block content %}
 
-        <p>Status:
-            {% if queue.is_paused %}
-                <b>Paused</b>
-            {% else %}
-                <b>Active</b>
-            {% endif %}
-        </p>
+<div class="container mt-4">
 
-        <a href="{% url 'join_queue' queue.id %}">
-            Join Queue
-        </a>
+    <div class="card shadow-sm p-4">
+
+        <h2 class="mb-4 text-center">
+            Available Queues
+        </h2>
+
+        {% if queues %}
+
+            <div class="row">
+
+                {% for queue in queues %}
+
+                    <div class="col-md-6 mb-4">
+
+                        <div class="card border-0 shadow-sm h-100">
+
+                            <div class="card-body">
+
+                                <h4 class="card-title">
+                                    {{ queue.name }}
+                                </h4>
+
+                                <p class="card-text text-muted">
+                                    {{ queue.description }}
+                                </p>
+
+                                <p>
+                                    <strong>
+                                        Max Capacity:
+                                    </strong>
+
+                                    {{ queue.max_capacity }}
+                                </p>
+
+                                <p>
+                                    <strong>
+                                        Status:
+                                    </strong>
+
+                                    {% if queue.is_paused %}
+                                        <span class="text-danger">
+                                            Paused
+                                        </span>
+                                    {% else %}
+                                        <span class="text-success">
+                                            Active
+                                        </span>
+                                    {% endif %}
+                                </p>
+
+                                <!-- ================================= -->
+                                <!-- JOIN QUEUE WITH CONFIRMATION POPUP -->
+                                <!-- ================================= -->
+                                <form method="POST"
+                                      action="{% url 'join_queue' queue.id %}"
+                                      onsubmit="return confirm('Are you sure you want to join this queue?');">
+
+                                    {% csrf_token %}
+
+                                    <button type="submit"
+                                            class="btn btn-success w-100">
+
+                                        Join Queue
+
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="alert alert-warning text-center">
+
+                No queues available for your year of study.
+
+            </div>
+
+        {% endif %}
+
     </div>
-{% empty %}
-    <p>No queues available.</p>
-{% endfor %}
 
-</body>
-</html>
+</div>
+
+{% endblock %}

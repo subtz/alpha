@@ -1,85 +1,53 @@
 {% extends 'calc/base.html' %}
 
+{% block title %}
+Reports
+{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3">Staff Reports</h1>
-            <p class="text-muted mb-0">Queue analytics for today</p>
-        </div>
+
+<div class="container mt-4">
+
+    <div class="card shadow-sm p-4">
+
+        <h2 class="mb-4">
+            Queue Reports
+        </h2>
+
+        <table class="table table-bordered">
+
+            <tr>
+                <th>Date</th>
+                <td>{{ today }}</td>
+            </tr>
+
+            <tr>
+                <th>Served Today</th>
+                <td>{{ served_today }}</td>
+            </tr>
+
+            <tr>
+                <th>Waiting</th>
+                <td>{{ waiting }}</td>
+            </tr>
+
+            <tr>
+                <th>Skipped</th>
+                <td>{{ skipped }}</td>
+            </tr>
+
+        </table>
+
+        <!-- PDF EXPORT BUTTON -->
+        <a href="{% url 'export_reports_pdf' %}"
+           class="btn btn-danger">
+
+            Download PDF Report
+
+        </a>
+
     </div>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
-        <div class="col">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Served Today</h5>
-                    <p class="display-6 mb-0">{{ total_served_today }}</p>
-                    <p class="text-muted mb-0">Completed tickets served today</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Waiting Now</h5>
-                    <p class="display-6 mb-0">{{ active_waiting_count }}</p>
-                    <p class="text-muted mb-0">Customers still in queue</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Avg Wait</h5>
-                    <p class="display-6 mb-0">{{ average_waiting_minutes }}<span class="fs-5"> mins</span></p>
-                    <p class="text-muted mb-0">Average time before service</p>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Skipped Today</h5>
-                    <p class="display-6 mb-0">{{ skipped_today }}</p>
-                    <p class="text-muted mb-0">Tickets skipped by staff</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title">Daily Ticket Summary</h5>
-            <p class="mb-2 text-muted">Total tickets created today</p>
-            <h2 class="fw-bold">{{ total_tickets_today }}</h2>
-        </div>
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title mb-3">Hourly Queue Activity</h5>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead>
-                        <tr>
-                            <th scope="col">Hour</th>
-                            <th scope="col">Created</th>
-                            <th scope="col">Completed</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in busiest_hours %}
-                        <tr>
-                            <td>{{ row.hour }}</td>
-                            <td>{{ row.created }}</td>
-                            <td>{{ row.completed }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 </div>
+
 {% endblock %}

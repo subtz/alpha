@@ -1,0 +1,76 @@
+{% extends 'calc/base.html' %}
+
+{% block title %}
+Staff Dashboard
+{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">
+        Staff Queue Dashboard
+    </h2>
+
+    <div class="row">
+
+        {% for queue in queues %}
+
+            <div class="col-md-4 mb-4">
+
+                <div class="card shadow-sm h-100">
+
+                    <div class="card-body">
+
+                        <h4>
+                            {{ queue.name }}
+                        </h4>
+
+                        <p>
+                            {{ queue.description }}
+                        </p>
+
+                        <p>
+
+                            <strong>Status:</strong>
+
+                            {% if queue.is_paused %}
+                                <span class="text-danger">
+                                    Paused
+                                </span>
+                            {% else %}
+                                <span class="text-success">
+                                    Active
+                                </span>
+                            {% endif %}
+
+                        </p>
+
+                        <a href="{% url 'queue_control_dashboard' queue.id %}"
+                           class="btn btn-primary w-100">
+
+                            Open Queue
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        {% empty %}
+
+            <div class="alert alert-warning">
+
+                No active queues available.
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+{% endblock %}

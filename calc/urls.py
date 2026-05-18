@@ -3,6 +3,7 @@
 # ==================================================
 from django.urls import path
 from django.contrib.auth import views as auth_views
+
 from . import views
 
 # ==================================================
@@ -11,22 +12,48 @@ from . import views
 urlpatterns = [
 
     # ==================================================
-    # AUTH / HOME
+    # HOME / AUTH
     # ==================================================
-    path('', views.home, name='home'),
-    path('login/', views.login_view, name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
-    path('register/', views.register, name='register'),
+    path(
+        '',
+        views.home,
+        name='home'
+    ),
+
+    path(
+        'login/',
+        views.login_view,
+        name='login'
+    ),
+
+    path(
+        'logout/',
+        auth_views.LogoutView.as_view(
+            next_page='/'
+        ),
+        name='logout'
+    ),
+
+    path(
+        'register/',
+        views.register,
+        name='register'
+    ),
 
     # ==================================================
-    # STUDENT DASHBOARD
+    # STUDENT
     # ==================================================
-    path('dashboard/', views.dashboard, name='dashboard'),
+    path(
+        'dashboard/',
+        views.dashboard,
+        name='dashboard'
+    ),
 
-    # ==================================================
-    # QUEUE SYSTEM (STUDENTS)
-    # ==================================================
-    path('queues/', views.queue_list, name='queue_list'),
+    path(
+        'queues/',
+        views.queue_list,
+        name='queue_list'
+    ),
 
     path(
         'queues/join/<int:queue_id>/',
@@ -34,10 +61,17 @@ urlpatterns = [
         name='join_queue'
     ),
 
-    path('display/', views.queue_display, name='queue_display'),
+    # ==================================================
+    # LIVE DISPLAY
+    # ==================================================
+    path(
+        'display/',
+        views.queue_display,
+        name='queue_display'
+    ),
 
     # ==================================================
-    # STAFF DASHBOARD (ENTRY POINT)
+    # STAFF DASHBOARD
     # ==================================================
     path(
         'staff/dashboard/',
@@ -45,9 +79,6 @@ urlpatterns = [
         name='staff_dashboard_home'
     ),
 
-    # ==================================================
-    # STAFF DASHBOARD (QUEUE CONTROL)
-    # ==================================================
     path(
         'staff/dashboard/<int:queue_id>/',
         views.queue_control_dashboard,
@@ -76,7 +107,7 @@ urlpatterns = [
     ),
 
     # ==================================================
-    # REPORTING SYSTEM
+    # REPORTS
     # ==================================================
     path(
         'staff/reports/',
