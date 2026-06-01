@@ -85,6 +85,12 @@ urlpatterns = [
         name='queue_control_dashboard'
     ),
 
+    path(
+        'staff/dashboard/status/<int:queue_id>/',
+        views.queue_status_api,
+        name='queue_status_api'
+    ),
+
     # ==================================================
     # STAFF ACTIONS
     # ==================================================

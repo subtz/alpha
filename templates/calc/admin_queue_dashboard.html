@@ -16,7 +16,7 @@ Queue Control
         </h2>
 
         <!-- CURRENT -->
-        <div class="mb-4">
+        <div class="mb-4" id="now-serving-section">
 
             <h4>
                 Now Serving
@@ -97,7 +97,7 @@ Queue Control
 
             </thead>
 
-            <tbody>
+            <tbody id="waiting-list-tbody">
 
                 {% for entry in waiting_list %}
 
@@ -139,4 +139,52 @@ Queue Control
 
 </div>
 
+<script>
+    function refreshQueueData() {
+        fetch("{% url 'queue_status_api' queue.id %}")
+            .then(response => response.json())
+            .then(data => {
+                // Update Now Serving
+                const nowServingDiv = document.getElementById('now-serving-section');
+                if (data.current_entry) {
+                    nowServingDiv.innerHTML = `
+                        <h4>Now Serving</h4>
+                        <div class="alert alert-success">
+                            <h3>${data.current_entry.ticket_number}</h3>
+                            <p>${data.current_entry.customer_name}</p>
+                        </div>
+                    `;
+                } else {
+                    nowServingDiv.innerHTML = `
+                        <h4>Now Serving</h4>
+                        <div class="alert alert-warning">
+                            No student currently serving.
+                        </div>
+                    `;
+                }
+
+                // Update Waiting Students List
+                const tbody = document.getElementById('waiting-list-tbody');
+                if (data.waiting_list.length > 0) {
+                    tbody.innerHTML = data.waiting_list.map(entry => `
+                        <tr>
+                            <td>${entry.ticket_number}</td>
+                            <td>${entry.customer_name}</td>
+                            <td>${entry.status}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="3">No students waiting.</td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(err => console.error('Error fetching queue status:', err));
+    }
+
+    // Poll every 10 seconds
+    setInterval(refreshQueueData, 10000);
+</script>
 {% endblock %}

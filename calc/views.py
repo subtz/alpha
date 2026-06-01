@@ -2,7 +2,7 @@
 # IMPORTS
 # ==================================================
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.db import transaction, IntegrityError
 
@@ -209,12 +209,13 @@ def join_queue(request, queue_id):
 
     try:
         with transaction.atomic():
-
-            last = QueueEntry.objects.filter(queue=queue).order_by('-position').first()
-            next_position = 1 if not last else last.position + 1
+            queue_locked = Queue.objects.select_for_update().get(id=queue.id)
+            next_position = queue_locked.current_ticket_number + 1
+            queue_locked.current_ticket_number = next_position
+            queue_locked.save()
 
             entry = QueueEntry.objects.create(
-                queue=queue,
+                queue=queue_locked,
                 customer=customer,
                 service=service,
                 position=next_position,
@@ -222,17 +223,20 @@ def join_queue(request, queue_id):
             )
 
     except IntegrityError:
-        # fallback for race condition
-        last = QueueEntry.objects.filter(queue=queue).order_by('-position').first()
-        next_position = 1 if not last else last.position + 2
+        # fallback
+        with transaction.atomic():
+            queue_locked = Queue.objects.select_for_update().get(id=queue.id)
+            next_position = queue_locked.current_ticket_number + 1
+            queue_locked.current_ticket_number = next_position
+            queue_locked.save()
 
-        entry = QueueEntry.objects.create(
-            queue=queue,
-            customer=customer,
-            service=service,
-            position=next_position,
-            status='waiting'
-        )
+            entry = QueueEntry.objects.create(
+                queue=queue_locked,
+                customer=customer,
+                service=service,
+                position=next_position,
+                status='waiting'
+            )
 
     return render(request, 'calc/queue_join_success.html', {
         'entry': entry,
@@ -291,6 +295,28 @@ def queue_control_dashboard(request, queue_id):
 # STAFF ACTIONS
 # ==================================================
 @staff_member_required
+def queue_status_api(request, queue_id):
+    queue = get_object_or_404(Queue, id=queue_id)
+    current = QueueEntry.objects.filter(queue=queue, status='serving').first()
+    waiting_list = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('position')
+    
+    current_data = None
+    if current:
+        current_data = {
+            'ticket_number': current.ticket_number,
+            'customer_name': current.customer.name,
+        }
+        
+    waiting_data = [{'ticket_number': e.ticket_number, 'customer_name': e.customer.name, 'status': e.status} for e in waiting_list]
+    
+    return JsonResponse({
+        'current_entry': current_data,
+        'waiting_list': waiting_data,
+        'queue_paused': queue.is_paused,
+    })
+
+
+@staff_member_required
 def serve_current(request, queue_id):
     now = timezone.now()
 
@@ -344,7 +370,7 @@ def staff_reports(request):
         'today': today,
         'served_today': QueueEntry.objects.filter(status='completed', completed_at__date=today).count(),
         'waiting': QueueEntry.objects.filter(status='waiting').count(),
-        'skipped': QueueEntry.objects.filter(status='skipped').count()
+        'skipped': QueueEntry.objects.filter(status='skipped', completed_at__date=today).count()
     })
 
 
@@ -368,7 +394,7 @@ def export_reports_pdf(request):
         ['Date', str(today)],
         ['Waiting', QueueEntry.objects.filter(status='waiting').count()],
         ['Served Today', QueueEntry.objects.filter(status='completed', completed_at__date=today).count()],
-        ['Skipped', QueueEntry.objects.filter(status='skipped').count()]
+        ['Skipped', QueueEntry.objects.filter(status='skipped', completed_at__date=today).count()]
     ]
 
     table = Table(data)
