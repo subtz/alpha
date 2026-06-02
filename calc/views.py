@@ -1,6 +1,7 @@
 # ==================================================
 # IMPORTS
 # ==================================================
+from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
@@ -238,9 +239,13 @@ def join_queue(request, queue_id):
                 status='waiting'
             )
 
+    waiting_count = QueueEntry.objects.filter(queue=queue, status='waiting').count()
+    eta_minutes = waiting_count * service.estimated_time
+
     return render(request, 'calc/queue_join_success.html', {
         'entry': entry,
-        'queue': queue
+        'queue': queue,
+        'eta_minutes': eta_minutes
     })
 
 
@@ -254,6 +259,10 @@ def queue_display(request):
     if not queue:
         return HttpResponse("No active queue available.")
 
+    waiting_list = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('position')
+    for entry in waiting_list:
+        entry.eta_minutes = entry.position * entry.service.estimated_time
+
     return render(request, 'calc/display.html', {
         'queue': queue,
         'now_serving': QueueEntry.objects.filter(
@@ -263,7 +272,8 @@ def queue_display(request):
         'next_ticket': QueueEntry.objects.filter(
             queue=queue,
             status='waiting'
-        ).order_by('position').first()
+        ).order_by('position').first(),
+        'waiting_list': waiting_list
     })
 
 
@@ -297,6 +307,19 @@ def queue_control_dashboard(request, queue_id):
 @staff_member_required
 def queue_status_api(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
+
+    if queue.is_auto_mode_enabled and not queue.is_paused and queue.auto_serve_interval > 0:
+        now = timezone.now()
+        interval_elapsed = (
+            queue.last_auto_served_at is None or
+            now >= queue.last_auto_served_at + timedelta(minutes=queue.auto_serve_interval)
+        )
+
+        if interval_elapsed:
+            advance_queue(queue_id)
+            queue.last_auto_served_at = now
+            queue.save()
+
     current = QueueEntry.objects.filter(queue=queue, status='serving').first()
     waiting_list = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('position')
     
@@ -313,11 +336,12 @@ def queue_status_api(request, queue_id):
         'current_entry': current_data,
         'waiting_list': waiting_data,
         'queue_paused': queue.is_paused,
+        'auto_mode_enabled': queue.is_auto_mode_enabled,
+        'auto_serve_interval': queue.auto_serve_interval,
     })
 
 
-@staff_member_required
-def serve_current(request, queue_id):
+def advance_queue(queue_id):
     now = timezone.now()
 
     current = QueueEntry.objects.filter(queue_id=queue_id, status='serving').first()
@@ -335,6 +359,10 @@ def serve_current(request, queue_id):
         next_entry.served_at = now
         next_entry.save()
 
+
+@staff_member_required
+def serve_current(request, queue_id):
+    advance_queue(queue_id)
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
@@ -355,6 +383,38 @@ def toggle_queue_pause(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
     queue.is_paused = not queue.is_paused
     queue.save()
+
+    return redirect('queue_control_dashboard', queue_id=queue_id)
+
+
+@staff_member_required
+def toggle_auto_mode(request, queue_id):
+    queue = get_object_or_404(Queue, id=queue_id)
+
+    if request.method == 'POST':
+        queue.is_auto_mode_enabled = not queue.is_auto_mode_enabled
+        if queue.is_auto_mode_enabled:
+            queue.last_auto_served_at = timezone.now()
+        queue.save()
+
+    return redirect('queue_control_dashboard', queue_id=queue_id)
+
+
+@staff_member_required
+def set_auto_interval(request, queue_id):
+    queue = get_object_or_404(Queue, id=queue_id)
+
+    if request.method == 'POST':
+        interval = request.POST.get('auto_serve_interval')
+        try:
+            interval_value = int(interval)
+            if interval_value > 0:
+                queue.auto_serve_interval = interval_value
+                if queue.is_auto_mode_enabled:
+                    queue.last_auto_served_at = timezone.now()
+                queue.save()
+        except (TypeError, ValueError):
+            pass
 
     return redirect('queue_control_dashboard', queue_id=queue_id)
 

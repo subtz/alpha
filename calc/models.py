@@ -107,6 +107,20 @@ class Queue(models.Model):
         default=0
     )
 
+    is_auto_mode_enabled = models.BooleanField(
+        default=False
+    )
+
+    auto_serve_interval = models.PositiveIntegerField(
+        default=0,
+        help_text="Auto serve interval in minutes"
+    )
+
+    last_auto_served_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )

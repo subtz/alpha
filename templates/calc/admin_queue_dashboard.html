@@ -76,6 +76,39 @@ Queue Control
 
             </a>
 
+            <form action="{% url 'toggle_auto_mode' queue.id %}" method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary">
+                    {% if queue.is_auto_mode_enabled %}
+                        Disable Auto Mode
+                    {% else %}
+                        Enable Auto Mode
+                    {% endif %}
+                </button>
+            </form>
+
+            <form action="{% url 'set_auto_interval' queue.id %}" method="post" class="d-flex align-items-center gap-2">
+                {% csrf_token %}
+                <input type="number" min="1" name="auto_serve_interval" value="{{ queue.auto_serve_interval }}" class="form-control" style="width: 140px;">
+                <button type="submit" class="btn btn-primary">Set Interval</button>
+            </form>
+
+        </div>
+
+        <div class="mb-4">
+            <h5>Auto Mode</h5>
+            <p>Status:
+                <strong>
+                    {% if queue.is_auto_mode_enabled %}
+                        Enabled
+                    {% else %}
+                        Disabled
+                    {% endif %}
+                </strong>
+            </p>
+            <p>Interval:
+                <strong>{{ queue.auto_serve_interval }} minutes</strong>
+            </p>
         </div>
 
         <!-- WAITING LIST -->

@@ -112,6 +112,18 @@ urlpatterns = [
         name='toggle_queue_pause'
     ),
 
+    path(
+        'staff/auto-mode/toggle/<int:queue_id>/',
+        views.toggle_auto_mode,
+        name='toggle_auto_mode'
+    ),
+
+    path(
+        'staff/auto-mode/interval/<int:queue_id>/',
+        views.set_auto_interval,
+        name='set_auto_interval'
+    ),
+
     # ==================================================
     # REPORTS
     # ==================================================

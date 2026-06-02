@@ -109,9 +109,9 @@
         <h1>✓ Successfully Joined Queue!</h1>
         <div class="queue-details">
             <p><strong>Queue:</strong> {{ queue.name }}</p>
-            <p><strong>Your ticket number:</strong> {{ entry.id }}</p>
+            <p><strong>Your ticket number:</strong> {{ entry.ticket_number }}</p>
             <p><strong>Your position in queue:</strong> {{ position }}</p>
-            <p><strong>Estimated wait time:</strong> {{ position|add:"0" }} minutes</p>
+            <p><strong>Estimated wait time:</strong> {{ eta_minutes }} minutes</p>
         </div>
         <div class="action-buttons">
             <a href="{% url 'queue_list' %}" class="btn btn-primary">Back to Queues</a>

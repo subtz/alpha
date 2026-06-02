@@ -83,57 +83,17 @@ Queue Control
             Waiting Students
         </h4>
 
-        <table class="table table-bordered">
-
-            <thead>
-
-                <tr>
-
-                    <th>Ticket</th>
-                    <th>Name</th>
-                    <th>Status</th>
-
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-                {% for entry in waiting_list %}
-
-                    <tr>
-
-                        <td>
-                            {{ entry.ticket_number }}
-                        </td>
-
-                        <td>
-                            {{ entry.customer.name }}
-                        </td>
-
-                        <td>
-                            {{ entry.status }}
-                        </td>
-
-                    </tr>
-
-                {% empty %}
-
-                    <tr>
-
-                        <td colspan="3">
-
-                            No students waiting.
-
-                        </td>
-
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
+        <ul class="list-group mb-4">
+            {% for entry in waiting_list %}
+                <li class="list-group-item">
+                    Ticket {{ entry.ticket_number }} — ETA: {{ entry.eta_minutes }} mins
+                </li>
+            {% empty %}
+                <li class="list-group-item">
+                    No students waiting.
+                </li>
+            {% endfor %}
+        </ul>
 
     </div>
 
