@@ -182,6 +182,7 @@ class Service(models.Model):
     )
 
     estimated_time = models.PositiveIntegerField(
+        default=5,
         help_text="Estimated service time in minutes"
     )
 

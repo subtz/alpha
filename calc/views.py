@@ -189,9 +189,12 @@ def join_queue(request, queue_id):
     ).first()
 
     if existing:
+        existing_eta = existing.position * (existing.service.estimated_time or 5)
         return render(request, 'calc/queue_join_success.html', {
             'entry': existing,
             'queue': queue,
+            'position': existing.position,
+            'eta_minutes': existing_eta,
             'message': 'Already joined.'
         })
 
@@ -207,6 +210,8 @@ def join_queue(request, queue_id):
     service = Service.objects.filter(is_active=True).first()
     if not service:
         return HttpResponse("No active service available.")
+
+    service_time = service.estimated_time or 5
 
     try:
         with transaction.atomic():
@@ -240,11 +245,12 @@ def join_queue(request, queue_id):
             )
 
     waiting_count = QueueEntry.objects.filter(queue=queue, status='waiting').count()
-    eta_minutes = waiting_count * service.estimated_time
+    eta_minutes = waiting_count * service_time
 
     return render(request, 'calc/queue_join_success.html', {
         'entry': entry,
         'queue': queue,
+        'position': entry.position,
         'eta_minutes': eta_minutes
     })
 
@@ -261,7 +267,8 @@ def queue_display(request):
 
     waiting_list = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('position')
     for entry in waiting_list:
-        entry.eta_minutes = entry.position * entry.service.estimated_time
+        entry_service_time = entry.service.estimated_time or 5
+        entry.eta_minutes = entry.position * entry_service_time
 
     return render(request, 'calc/display.html', {
         'queue': queue,
