@@ -225,6 +225,7 @@ def join_queue(request, queue_id):
                 customer=customer,
                 service=service,
                 position=next_position,
+                ticket_number=f"SC-{next_position:03d}",
                 status='waiting'
             )
 
@@ -241,6 +242,7 @@ def join_queue(request, queue_id):
                 customer=customer,
                 service=service,
                 position=next_position,
+                ticket_number=f"SC-{next_position:03d}",
                 status='waiting'
             )
 
@@ -255,6 +257,17 @@ def join_queue(request, queue_id):
     })
 
 
+def get_waiting_entries(queue):
+    waiting_entries = list(QueueEntry.objects.filter(queue=queue, status='waiting').order_by('created_at'))
+
+    for idx, entry in enumerate(waiting_entries, start=1):
+        entry.position = idx
+        entry_service_time = entry.service.estimated_time or 5
+        entry.eta_minutes = idx * entry_service_time
+
+    return waiting_entries
+
+
 # ==================================================
 # DISPLAY SCREEN (FIXED)
 # ==================================================
@@ -265,10 +278,7 @@ def queue_display(request):
     if not queue:
         return HttpResponse("No active queue available.")
 
-    waiting_list = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('position')
-    for entry in waiting_list:
-        entry_service_time = entry.service.estimated_time or 5
-        entry.eta_minutes = entry.position * entry_service_time
+    waiting_list = get_waiting_entries(queue)
 
     return render(request, 'calc/display.html', {
         'queue': queue,
@@ -276,10 +286,7 @@ def queue_display(request):
             queue=queue,
             status='serving'
         ).first(),
-        'next_ticket': QueueEntry.objects.filter(
-            queue=queue,
-            status='waiting'
-        ).order_by('position').first(),
+        'next_ticket': waiting_list[0] if waiting_list else None,
         'waiting_list': waiting_list
     })
 
@@ -303,7 +310,7 @@ def queue_control_dashboard(request, queue_id):
     return render(request, 'calc/admin_queue_dashboard.html', {
         'queue': queue,
         'current_entry': QueueEntry.objects.filter(queue=queue, status='serving').first(),
-        'waiting_list': QueueEntry.objects.filter(queue=queue, status='waiting').order_by('position'),
+        'waiting_list': get_waiting_entries(queue),
         'queue_paused': queue.is_paused
     })
 
@@ -311,34 +318,31 @@ def queue_control_dashboard(request, queue_id):
 # ==================================================
 # STAFF ACTIONS
 # ==================================================
-@staff_member_required
+@login_required
 def queue_status_api(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
 
-    if queue.is_auto_mode_enabled and not queue.is_paused and queue.auto_serve_interval > 0:
-        now = timezone.now()
-        interval_elapsed = (
-            queue.last_auto_served_at is None or
-            now >= queue.last_auto_served_at + timedelta(minutes=queue.auto_serve_interval)
-        )
-
-        if interval_elapsed:
-            advance_queue(queue_id)
-            queue.last_auto_served_at = now
-            queue.save()
-
     current = QueueEntry.objects.filter(queue=queue, status='serving').first()
-    waiting_list = QueueEntry.objects.filter(queue=queue, status='waiting').order_by('position')
-    
+    waiting_entries = get_waiting_entries(queue)
+
     current_data = None
     if current:
         current_data = {
             'ticket_number': current.ticket_number,
             'customer_name': current.customer.name,
         }
-        
-    waiting_data = [{'ticket_number': e.ticket_number, 'customer_name': e.customer.name, 'status': e.status} for e in waiting_list]
-    
+
+    waiting_data = [
+        {
+            'position': entry.position,
+            'ticket_number': entry.ticket_number,
+            'customer_name': entry.customer.name,
+            'status': entry.status,
+            'eta': entry.eta_minutes,
+        }
+        for entry in waiting_entries
+    ]
+
     return JsonResponse({
         'current_entry': current_data,
         'waiting_list': waiting_data,
@@ -354,7 +358,7 @@ def advance_queue(queue_id):
     current = QueueEntry.objects.filter(queue_id=queue_id, status='serving').first()
 
     if current:
-        current.status = 'completed'
+        current.status = 'served'
         current.completed_at = now
         current.served_at = current.served_at or now
         current.save()
@@ -435,7 +439,7 @@ def staff_reports(request):
 
     return render(request, 'calc/staff_reports.html', {
         'today': today,
-        'served_today': QueueEntry.objects.filter(status='completed', completed_at__date=today).count(),
+        'served_today': QueueEntry.objects.filter(status='served', completed_at__date=today).count(),
         'waiting': QueueEntry.objects.filter(status='waiting').count(),
         'skipped': QueueEntry.objects.filter(status='skipped', completed_at__date=today).count()
     })
@@ -460,7 +464,7 @@ def export_reports_pdf(request):
         ['Metric', 'Value'],
         ['Date', str(today)],
         ['Waiting', QueueEntry.objects.filter(status='waiting').count()],
-        ['Served Today', QueueEntry.objects.filter(status='completed', completed_at__date=today).count()],
+        ['Served Today', QueueEntry.objects.filter(status='served', completed_at__date=today).count()],
         ['Skipped', QueueEntry.objects.filter(status='skipped', completed_at__date=today).count()]
     ]
 

@@ -210,7 +210,7 @@ class QueueEntry(models.Model):
     STATUS_CHOICES = [
         ('waiting', 'Waiting'),
         ('serving', 'Serving'),
-        ('completed', 'Completed'),
+        ('served', 'Served'),
         ('skipped', 'Skipped'),
     ]
 
@@ -230,6 +230,12 @@ class QueueEntry(models.Model):
     )
 
     position = models.PositiveIntegerField()
+
+    ticket_number = models.CharField(
+        max_length=20,
+        blank=True,
+        editable=False
+    )
 
     status = models.CharField(
         max_length=20,
@@ -255,13 +261,14 @@ class QueueEntry(models.Model):
         blank=True
     )
 
-    def ticket_number(self):
-
-        return f"SC-{self.position:03d}"
+    def save(self, *args, **kwargs):
+        if self.position and not self.ticket_number:
+            self.ticket_number = f"SC-{self.position:03d}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
 
-        return f"{self.ticket_number()} - {self.customer.name}"
+        return f"{self.ticket_number} - {self.customer.name}"
 
     class Meta:
 
@@ -275,16 +282,16 @@ class QueueEntry(models.Model):
 
     def clean(self):
 
-        if self.status in ['serving', 'completed'] and not self.served_at:
+        if self.status in ['serving', 'served'] and not self.served_at:
 
             raise ValidationError(
-                "Served time must be set when status is serving or completed."
+                "Served time must be set when status is serving or served."
             )
 
-        if self.status == 'completed' and not self.completed_at:
+        if self.status == 'served' and not self.completed_at:
 
             raise ValidationError(
-                "Completed time must be set when status is completed."
+                "Completed time must be set when status is served."
             )
 
         super().clean()

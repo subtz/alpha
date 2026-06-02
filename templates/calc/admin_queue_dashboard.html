@@ -122,8 +122,10 @@ Queue Control
 
                 <tr>
 
+                    <th>Position</th>
                     <th>Ticket</th>
                     <th>Name</th>
+                    <th>ETA</th>
                     <th>Status</th>
 
                 </tr>
@@ -137,11 +139,19 @@ Queue Control
                     <tr>
 
                         <td>
+                            {{ entry.position }}
+                        </td>
+
+                        <td>
                             {{ entry.ticket_number }}
                         </td>
 
                         <td>
                             {{ entry.customer.name }}
+                        </td>
+
+                        <td>
+                            {{ entry.eta_minutes }} mins
                         </td>
 
                         <td>
@@ -154,7 +164,7 @@ Queue Control
 
                     <tr>
 
-                        <td colspan="3">
+                        <td colspan="5">
 
                             No students waiting.
 
@@ -201,8 +211,10 @@ Queue Control
                 if (data.waiting_list.length > 0) {
                     tbody.innerHTML = data.waiting_list.map(entry => `
                         <tr>
+                            <td>${entry.position}</td>
                             <td>${entry.ticket_number}</td>
                             <td>${entry.customer_name}</td>
+                            <td>${entry.eta} mins</td>
                             <td>${entry.status}</td>
                         </tr>
                     `).join('');
