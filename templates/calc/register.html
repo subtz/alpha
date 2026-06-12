@@ -1,0 +1,165 @@
+{% extends 'calc/base.html' %}
+
+{% block head %}
+<style>
+
+body{
+background-color:#f8f9fa;
+font-family:Tahoma,sans-serif;
+margin:0;
+padding:0;
+}
+
+#login_bar{
+background:white;
+width:90%;
+max-width:800px;
+border-radius:8px;
+margin:auto;
+margin-top:50px;
+padding:20px;
+text-align:center;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+#text{
+width:100%;
+max-width:300px;
+border-radius:8px;
+margin:auto;
+padding:6px;
+border:solid 1px #aaa;
+font-size:14px;
+margin-bottom:15px;
+}
+
+#submit{
+background-color:#3c5a99;
+width:100%;
+max-width:200px;
+border-radius:8px;
+padding:8px;
+color:white;
+font-weight:bold;
+margin-top:15px;
+border:none;
+cursor:pointer;
+}
+
+.error-message{
+color:red;
+margin-bottom:10px;
+font-size:14px;
+}
+
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<div id="login_bar">
+
+<h2>
+
+Student Registration
+
+</h2>
+
+<form method="POST">
+
+{% csrf_token %}
+
+<input
+type="text"
+id="text"
+name="registration_number"
+placeholder="Registration Number"
+value="{{form.registration_number.value|default:''}}"
+required>
+
+{% for error in form.registration_number.errors %}
+<div class="error-message">
+{{error}}
+</div>
+{% endfor %}
+
+
+<input
+type="text"
+id="text"
+name="username"
+placeholder="Input Username"
+value="{{form.username.value|default:''}}"
+required>
+
+{% for error in form.username.errors %}
+<div class="error-message">
+{{error}}
+</div>
+{% endfor %}
+
+
+<input
+type="email"
+id="text"
+name="email"
+placeholder="Email Address"
+value="{{form.email.value|default:''}}"
+required>
+
+{% for error in form.email.errors %}
+<div class="error-message">
+{{error}}
+</div>
+{% endfor %}
+
+
+<input
+type="password"
+id="text"
+name="password1"
+placeholder="Input Password"
+required>
+
+{% for error in form.password1.errors %}
+<div class="error-message">
+{{error}}
+</div>
+{% endfor %}
+
+
+<input
+type="password"
+id="text"
+name="password2"
+placeholder="Re-enter Password"
+required>
+
+{% for error in form.password2.errors %}
+<div class="error-message">
+{{error}}
+</div>
+{% endfor %}
+
+
+<input
+type="submit"
+id="submit"
+value="Register">
+
+<br><br>
+
+Already have an account?
+
+<a href="{% url 'login' %}">
+
+Login
+
+</a>
+
+</form>
+
+</div>
+
+{% endblock %}

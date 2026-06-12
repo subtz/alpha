@@ -1,0 +1,599 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>
+{% block title %}
+SQMS | Student Queue Management System
+{% endblock %}
+</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet">
+
+<link rel="manifest" href="{% static 'calc/manifest.json' %}">
+<meta name="theme-color" content="#0d6efd">
+<link rel="icon" href="{% static 'calc/ezzy.png' %}">
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+
+body{
+    background:#f5f7fb;
+    font-family:Tahoma,sans-serif;
+    overflow-x:hidden;
+    margin:0;
+}
+
+/*================= SPLASH SCREEN =================*/
+
+#splash-screen{
+
+    position:fixed;
+    top:0;
+    left:0;
+
+    width:100%;
+    height:100vh;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+
+    background:linear-gradient(
+        135deg,
+        #0d6efd,
+        #003b99
+    );
+
+    z-index:99999;
+    overflow:hidden;
+
+    opacity:1;
+    transition:opacity 1s ease;
+}
+
+.hidden-splash{
+    opacity:0;
+}
+
+/* pulse glow */
+
+.glow{
+
+    position:absolute;
+
+    width:220px;
+    height:220px;
+
+    border-radius:50%;
+
+    background:rgba(
+        255,
+        255,
+        255,
+        0.08
+    );
+
+    animation:glowPulse 2s infinite;
+}
+
+@keyframes glowPulse{
+
+0%{
+transform:scale(1);
+}
+
+50%{
+transform:scale(1.5);
+}
+
+100%{
+transform:scale(1);
+}
+
+}
+
+/* logo */
+
+.logo-container{
+
+display:flex;
+gap:14px;
+
+position:relative;
+z-index:10;
+}
+
+.letter{
+
+font-size:80px;
+font-weight:bold;
+color:white;
+
+opacity:0;
+
+transform:
+translateY(60px);
+
+text-shadow:
+0 0 25px rgba(
+255,
+255,
+255,
+0.7);
+
+}
+
+/* individual animation */
+
+.s1{
+
+animation:
+slideIn .8s forwards;
+animation-delay:.2s;
+
+}
+
+.s2{
+
+animation:
+slideIn .8s forwards;
+animation-delay:.7s;
+
+}
+
+.s3{
+
+animation:
+slideIn .8s forwards;
+animation-delay:1.2s;
+
+}
+
+.s4{
+
+animation:
+slideIn .8s forwards;
+animation-delay:1.7s;
+
+}
+
+@keyframes slideIn{
+
+to{
+
+opacity:1;
+
+transform:
+translateY(0);
+
+}
+
+}
+
+/* subtitle */
+
+.subtitle{
+
+margin-top:20px;
+
+font-size:18px;
+color:white;
+
+letter-spacing:3px;
+
+opacity:0;
+
+animation:
+fadeSubtitle 1s forwards;
+
+animation-delay:2.5s;
+
+z-index:10;
+
+}
+
+@keyframes fadeSubtitle{
+
+to{
+
+opacity:.9;
+
+}
+
+}
+
+
+/* particles */
+
+.particle{
+
+position:absolute;
+
+width:5px;
+height:5px;
+
+border-radius:50%;
+
+background:white;
+
+opacity:.4;
+
+animation:
+floatUp linear infinite;
+
+}
+
+@keyframes floatUp{
+
+from{
+
+transform:
+translateY(100vh);
+
+}
+
+to{
+
+transform:
+translateY(-100vh);
+
+}
+
+}
+
+
+/*=========== NORMAL WEBSITE ===========*/
+
+.main-container{
+
+max-width:1200px;
+margin:auto;
+padding:30px;
+
+}
+
+.navbar-brand{
+
+font-weight:bold;
+font-size:28px;
+color:#0d6efd !important;
+
+}
+
+.nav-link{
+
+transition:.3s;
+
+}
+
+.nav-link:hover{
+
+color:#0d6efd !important;
+transform:translateY(-2px);
+
+}
+
+.logout-btn{
+
+border:none;
+background:none;
+color:#dc3545;
+font-weight:bold;
+
+}
+
+footer{
+
+text-align:center;
+padding:20px;
+color:gray;
+
+}
+
+</style>
+
+{% block head %}
+{% endblock %}
+
+</head>
+
+<body>
+
+
+<!-- SPLASH -->
+
+<div id="splash-screen">
+
+<div class="glow"></div>
+
+<div class="logo-container">
+
+<span class="letter s1">S</span>
+<span class="letter s2">Q</span>
+<span class="letter s3">M</span>
+<span class="letter s4">S</span>
+
+</div>
+
+<div class="subtitle">
+
+Student Queue Management System
+
+</div>
+
+</div>
+
+
+
+<!-- NAVBAR -->
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+
+<div class="container-fluid">
+
+<a class="navbar-brand"
+href="/">
+
+SQMS
+
+</a>
+
+<button class="navbar-toggler"
+type="button"
+data-bs-toggle="collapse"
+data-bs-target="#navbarNav">
+
+<span class="navbar-toggler-icon"></span>
+
+</button>
+
+<div class="collapse navbar-collapse"
+id="navbarNav">
+
+<ul class="navbar-nav me-auto">
+
+<li class="nav-item">
+<a class="nav-link" href="/">Home</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link" href="/queues/">Queues</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link" href="/display/">Live Display</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link" href="/staff/dashboard/">
+Staff Dashboard
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link" href="/staff/reports/">
+Reports
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link" href="/admin/">
+Admin
+</a>
+</li>
+
+</ul>
+
+<ul class="navbar-nav">
+
+{% if user.is_authenticated %}
+
+<li class="nav-item">
+
+<span class="nav-link">
+
+Welcome, {{user.username}}
+
+</span>
+
+</li>
+
+<li class="nav-item">
+
+<form method="POST"
+action="{% url 'logout' %}">
+
+{% csrf_token %}
+
+<button type="submit"
+class="logout-btn">
+
+Logout
+
+</button>
+
+</form>
+
+</li>
+
+{% else %}
+
+<li class="nav-item">
+<a class="nav-link"
+href="/login/">
+Login
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link"
+href="/register/">
+Register
+</a>
+</li>
+
+{% endif %}
+
+</ul>
+
+</div>
+
+</div>
+
+</nav>
+
+
+<div class="main-container">
+
+{% block content %}
+{% endblock %}
+
+</div>
+
+
+<footer>
+
+© 2026 SQMS | Student Queue Management System
+
+</footer>
+
+
+<script>
+
+document.addEventListener(
+"DOMContentLoaded",
+function(){
+
+let splash=
+document.getElementById(
+"splash-screen"
+);
+
+let shown=
+sessionStorage.getItem(
+"sqmsShown"
+);
+
+/* create particles */
+
+for(let i=0;i<30;i++){
+
+let p=
+document.createElement(
+"div"
+);
+
+p.className=
+"particle";
+
+p.style.left=
+Math.random()*100+"%";
+
+p.style.animationDuration=
+(Math.random()*4+4)
++"s";
+
+splash.appendChild(p);
+
+}
+
+if(shown){
+
+splash.style.display=
+"none";
+
+}
+
+else{
+
+setTimeout(function(){
+
+splash.classList.add(
+"hidden-splash"
+);
+
+sessionStorage.setItem(
+"sqmsShown",
+"true"
+);
+
+setTimeout(()=>{
+
+splash.remove();
+
+},1000);
+
+},4500);
+
+}
+
+});
+
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('{% static "calc/service-worker.js" %}')
+      .then(function(registration) {
+        console.log('Service Worker registered with scope:', registration.scope);
+
+        {% if user.is_authenticated %}
+        // CSRF helper
+        function getCookie(name) {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          if (match) return match[2];
+          return null;
+        }
+
+        function sendSubscriptionToServer(subscription) {
+          return fetch('{% url "push_subscribe" %}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ subscription: subscription })
+          }).then(function(resp) { return resp.json(); });
+        }
+
+        registration.pushManager.getSubscription().then(function(existing) {
+          if (existing) {
+            sendSubscriptionToServer(existing).then(function(data) {
+              console.log('Existing push subscription saved', data);
+            }).catch(function(err){ console.warn(err); });
+            return existing;
+          }
+
+          return registration.pushManager.subscribe({ userVisibleOnly: true })
+            .then(function(newSub) {
+              sendSubscriptionToServer(newSub).then(function(data) {
+                console.log('New push subscription saved', data);
+              }).catch(function(err){ console.warn(err); });
+              return newSub;
+            });
+        }).catch(function(err) {
+          console.warn('Push subscription error:', err);
+        });
+        {% endif %}
+
+      })
+      .catch(function(error) {
+        console.warn('Service Worker registration failed:', error);
+      });
+  });
+}
+</script>
+
+</body>
+</html>

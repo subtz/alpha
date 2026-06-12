@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Django SQLite database
+db.sqlite3
+
+# Django migration logs
+*.log
+
+# VS Code settings
+.vscode/
+
+# Python virtual environment
+env/
+venv/
+
+# macOS
+.DS_Store
+
+# PyCharm
+.idea/
+
+# Static and media (if not managed in version control)
+staticfiles/
+media/
+
+# Render deploy artifacts (if any)
+build/

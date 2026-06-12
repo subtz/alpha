@@ -1,0 +1,162 @@
+{% extends 'calc/base.html' %}
+
+{% block title %}
+Queue Control
+{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow-sm p-4">
+
+        <h2 class="mb-4">
+            Queue Control:
+            {{ queue.name }}
+        </h2>
+
+        <!-- CURRENT -->
+        <div class="mb-4" id="now-serving-section">
+
+            <h4>
+                Now Serving
+            </h4>
+
+            {% if current_entry %}
+
+                <div class="alert alert-success">
+
+                    <h3>
+                        {{ current_entry.ticket_number }}
+                    </h3>
+
+                    <p>
+                        {{ current_entry.customer.name }}
+                    </p>
+
+                </div>
+
+            {% else %}
+
+                <div class="alert alert-warning">
+
+                    No student currently serving.
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="mb-4 d-flex gap-2">
+
+            <a href="{% url 'serve_current' queue.id %}"
+               class="btn btn-success">
+
+                Next Student
+
+            </a>
+
+            <a href="{% url 'skip_current' queue.id %}"
+               class="btn btn-warning">
+
+                Skip
+
+            </a>
+
+            <a href="{% url 'toggle_queue_pause' queue.id %}"
+               class="btn btn-danger">
+
+                {% if queue_paused %}
+                    Resume Queue
+                {% else %}
+                    Pause Queue
+                {% endif %}
+
+            </a>
+
+        </div>
+
+        <!-- WAITING LIST -->
+        <h4 class="mb-3">
+            Waiting Students
+        </h4>
+
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Position</th>
+                    <th>Ticket</th>
+                    <th>Name</th>
+                    <th>ETA</th>
+                </tr>
+            </thead>
+            <tbody id="waiting-list-tbody">
+                {% for entry in waiting_list %}
+                    <tr>
+                        <td>{{ entry.position }}</td>
+                        <td>{{ entry.ticket_number }}</td>
+                        <td>{{ entry.customer.name }}</td>
+                        <td>{{ entry.eta_minutes }} mins</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4">No students waiting.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+    function refreshQueueData() {
+        fetch("{% url 'queue_status_api' queue.id %}")
+            .then(response => response.json())
+            .then(data => {
+                const nowServingDiv = document.getElementById('now-serving-section');
+                if (data.current_entry) {
+                    nowServingDiv.innerHTML = `
+                        <h4>Now Serving</h4>
+                        <div class="alert alert-success">
+                            <h3>${data.current_entry.ticket_number}</h3>
+                            <p>${data.current_entry.customer_name}</p>
+                        </div>
+                    `;
+                } else {
+                    nowServingDiv.innerHTML = `
+                        <h4>Now Serving</h4>
+                        <div class="alert alert-warning">
+                            No student currently serving.
+                        </div>
+                    `;
+                }
+
+                const tbody = document.getElementById('waiting-list-tbody');
+                if (data.waiting_list.length > 0) {
+                    tbody.innerHTML = data.waiting_list.map(entry => `
+                        <tr>
+                            <td>${entry.position}</td>
+                            <td>${entry.ticket_number}</td>
+                            <td>${entry.customer_name}</td>
+                            <td>${entry.eta} mins</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4">No students waiting.</td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(err => console.error('Error fetching queue status:', err));
+    }
+
+    setInterval(refreshQueueData, 10000);
+</script>
+
+{% endblock %}

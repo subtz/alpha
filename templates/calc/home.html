@@ -1,0 +1,105 @@
+{% extends 'calc/base.html' %}
+{% load static %}
+
+{% block title %}
+Home - SQMS
+{% endblock %}
+
+{% block head %}
+<style>
+
+    #search_box {
+        height: 40px;
+        background-color: white;
+        color: black;
+        width: 100%;
+        max-width: 400px;
+        border-radius: 8px;
+        border: solid 1px #aaa;
+        font-size: 16px;
+        padding: 8px 12px;
+        background-image: url("{% static 'calc/images/searchicon2.jpg' %}");
+        background-repeat: no-repeat;
+        background-position: right center;
+        background-size: 20px;
+        margin: auto;
+        display: block;
+    }
+
+    #profile_pic,
+    #profile_pic2 {
+        border-radius: 50%;
+        border: 2px solid white;
+    }
+
+    #profile_pic {
+        height: 200px;
+        width: 200px;
+        margin-top: -100px;
+    }
+
+    #profile_pic2 {
+        height: 150px;
+        width: 150px;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+    
+
+    
+
+    <div class="mx-auto"
+         style="max-width: 800px;">
+
+        <div class="text-center bg-white p-3 shadow-sm rounded">
+
+            <!-- Cover Image -->
+            <img src="{% static 'calc/images/house.jpg' %}"
+                 class="img-fluid mb-3"
+                 style="height: 300px; object-fit: cover; width: 100%;"
+                 alt="Cover">
+
+            <!-- Main Image -->
+            <img src="{% static 'calc/images/OIF.jpg' %}"
+                 id="profile_pic"
+                 class="mb-3"
+                 alt="Main Profile">
+
+            <!-- Secondary Image -->
+            <img src="{% static 'calc/images/ezzy.png' %}"
+                 id="profile_pic2"
+                 class="mb-3"
+                 alt="Secondary Profile">
+
+            <h2>
+                Smart Queue Management System
+            </h2>
+
+            <p class="text-muted">
+                Welcome to the University Smart Queue Platform
+            </p>
+
+            <div class="mt-4">
+
+                <a href="{% url 'queue_list' %}"
+                   class="nav-button">
+
+                    View Available Queues
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
