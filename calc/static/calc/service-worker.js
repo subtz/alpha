@@ -29,6 +29,12 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Never cache profile pictures or media files
+  if (event.request.url.includes('/media/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   if (event.request.method !== 'GET') {
     return;
   }

@@ -10,6 +10,8 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.db import transaction, IntegrityError
 from django.core.paginator import Paginator
+from django.core.cache import cache
+from django.contrib import messages
 
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login
@@ -23,6 +25,7 @@ from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
+import os
 import json
 from django.views.decorators.http import require_POST
 
@@ -38,15 +41,36 @@ from .models import (
     QueueEntry,
     ValidStudent,
     StudentProfile,
-    NotificationLog  # Import the new model
+    NotificationLog
 )
 from .models import PushSubscription
 from django.db.models import Avg, F, ExpressionWrapper, DurationField
 from .utils import call_groq_api
 
+
 # ==================================================
 # FORMS
 # ==================================================
+class ProfilePictureForm(forms.ModelForm):
+    class Meta:
+        model = StudentProfile
+        fields = ['profile_picture']
+
+    def clean_profile_picture(self):
+        picture = self.cleaned_data.get('profile_picture')
+        if picture:
+            if picture.size > 2 * 1024 * 1024:
+                raise forms.ValidationError(
+                    "Image file too large. Maximum size is 2MB."
+                )
+            allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+            if picture.content_type not in allowed_types:
+                raise forms.ValidationError(
+                    "Unsupported file type. Please upload a JPEG, PNG, GIF or WebP image."
+                )
+        return picture
+
+
 class StudentRegistrationForm(UserCreationForm):
     registration_number = forms.CharField(max_length=50, required=True)
     email = forms.EmailField(required=True)
@@ -63,47 +87,62 @@ class StudentRegistrationForm(UserCreationForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError("Email already exists.")
-
         return email
 
     def clean_registration_number(self):
         reg_no = self.cleaned_data.get('registration_number')
-
         student = ValidStudent.objects.filter(
             registration_number=reg_no,
             is_active=True
         ).first()
-
         if not student:
             raise forms.ValidationError("Invalid registration number.")
-
         if StudentProfile.objects.filter(valid_student=student).exists():
             raise forms.ValidationError("This registration number already has an account.")
-
         return reg_no
 
 
 # ==================================================
-# BASIC PAGES
+# SECURITY EMAIL HELPER
 # ==================================================
-def home(request):
-    return render(request, 'calc/home.html')
+def send_security_email(user, event_type):
+    now = timezone.now().strftime('%Y-%m-%d %H:%M UTC')
 
+    subjects = {
+        'activated': 'Your SQMS account has been activated',
+        'password_changed': 'Your SQMS password was changed',
+        'new_login': 'New login to your SQMS account',
+    }
 
-def base(request):
-    return render(request, 'calc/base.html')
+    messages_body = {
+        'activated': (
+            f"Hi {user.username},\n\n"
+            f"Your SQMS account was successfully activated on {now}.\n\n"
+            f"You can now log in at any time.\n\n"
+            f"If this was not you, contact support immediately."
+        ),
+        'password_changed': (
+            f"Hi {user.username},\n\n"
+            f"Your SQMS password was changed on {now}.\n\n"
+            f"If this was not you, reset your password immediately."
+        ),
+        'new_login': (
+            f"Hi {user.username},\n\n"
+            f"A new login to your SQMS account was detected on {now}.\n\n"
+            f"If this was not you, reset your password immediately."
+        ),
+    }
 
+    subject = subjects.get(event_type, 'SQMS Security Notice')
+    body = messages_body.get(event_type, '')
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@sqms.com')
 
-@login_required
-def dashboard(request):
-    profile = StudentProfile.objects.filter(user=request.user).first()
-
-    return render(request, 'calc/dashboard.html', {
-        'student_profile': profile
-    })
+    try:
+        send_mail(subject, body, from_email, [user.email], fail_silently=True)
+    except Exception as e:
+        logger.error(f"Security email ({event_type}) failed for {user.email}: {e}")
 
 
 # ==================================================
@@ -117,10 +156,7 @@ def register(request):
 
         if form.is_valid():
             reg_no = form.cleaned_data['registration_number']
-
-            student = ValidStudent.objects.get(
-                registration_number=reg_no
-            )
+            student = ValidStudent.objects.get(registration_number=reg_no)
 
             user = form.save(commit=False)
             user.email = form.cleaned_data['email']
@@ -132,16 +168,25 @@ def register(request):
                 valid_student=student
             )
 
-            # Generate verification token and send email
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             verify_path = reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
             verify_url = request.build_absolute_uri(verify_path)
 
             subject = 'Verify your SQMS account email'
-            message = f"Hi {user.username},\n\nPlease verify your email by clicking the link below:\n{verify_url}\n\nIf you did not register, ignore this email."
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@example.com')
-            send_mail(subject, message, from_email, [user.email], fail_silently=False)
+            message = (
+                f"Hi {user.username},\n\n"
+                f"Please verify your SQMS account by clicking the link below:\n\n"
+                f"{verify_url}\n\n"
+                f"This link expires in 24 hours.\n\n"
+                f"If you did not register, ignore this email."
+            )
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@sqms.com')
+
+            try:
+                send_mail(subject, message, from_email, [user.email], fail_silently=False)
+            except Exception as e:
+                logger.error(f"Registration email failed for {user.email}: {e}")
 
             return render(request, 'calc/verify_email_sent.html', {'email': user.email})
 
@@ -158,34 +203,26 @@ def login_view(request):
 
         if user:
             if not user.is_active:
-                # Re-send verification token and email, then show the verification-sent page
-                try:
-                    uid = urlsafe_base64_encode(force_bytes(user.pk))
-                    token = default_token_generator.make_token(user)
-                    verify_path = reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
-                    verify_url = request.build_absolute_uri(verify_path)
-
-                    subject = 'Verify your SQMS account email'
-                    message = f"Hi {user.username},\n\nPlease verify your email by clicking the link below:\n{verify_url}\n\nIf you did not request this, ignore this email."
-                    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@example.com')
-                    send_mail(subject, message, from_email, [user.email], fail_silently=False)
-                except Exception:
-                    # don't block login flow on email errors; fall back to showing the page
-                    pass
-
-                return render(request, 'calc/verify_email_sent.html', {'email': user.email})
+                return render(request, 'calc/verify_email_sent.html', {
+                    'email': user.email,
+                    'show_resend': True
+                })
 
             login(request, user)
+            send_security_email(user, 'new_login')
             return redirect('dashboard')
 
-        return HttpResponse("Invalid credentials")
+        return render(request, 'calc/login.html', {
+            'error': 'Invalid username or password.'
+        })
 
-    # Optional inactive notice support via GET param (e.g. /login/?inactive=1)
     inactive_notice = None
     if request.GET.get('inactive'):
-        inactive_notice = 'Account inactive. Please verify your email.'
+        inactive_notice = 'Your account is not verified. Please check your email.'
 
-    return render(request, 'calc/login.html', {'inactive_notice': inactive_notice})
+    return render(request, 'calc/login.html', {
+        'inactive_notice': inactive_notice
+    })
 
 
 def verify_email(request, uidb64, token):
@@ -198,9 +235,191 @@ def verify_email(request, uidb64, token):
     if user is not None and default_token_generator.check_token(user, token):
         user.is_active = True
         user.save()
+        send_security_email(user, 'activated')
         return render(request, 'calc/email_verified.html', {'user': user})
     else:
-        return HttpResponse('Invalid verification link', status=400)
+        return render(request, 'calc/email_expired.html', status=400)
+
+
+def resend_confirmation(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+
+        cache_key = f'resend_confirm_{email}'
+        attempts = cache.get(cache_key, 0)
+
+        if attempts >= 3:
+            return render(request, 'calc/resend_confirmation.html', {
+                'error': 'Too many attempts. Please wait an hour before trying again.',
+                'email': email
+            })
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return render(request, 'calc/resend_confirmation.html', {
+                'success': True,
+                'email': email
+            })
+
+        if user.is_active:
+            return render(request, 'calc/resend_confirmation.html', {
+                'error': 'This account is already verified. You can log in.',
+                'email': email
+            })
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        verify_path = reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
+        verify_url = request.build_absolute_uri(verify_path)
+
+        subject = 'Verify your SQMS account email'
+        message = (
+            f"Hi {user.username},\n\n"
+            f"Here is your new verification link:\n\n"
+            f"{verify_url}\n\n"
+            f"This link expires in 24 hours.\n\n"
+            f"If you did not register, ignore this email."
+        )
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@sqms.com')
+
+        try:
+            send_mail(subject, message, from_email, [user.email], fail_silently=False)
+        except Exception as e:
+            logger.error(f"Resend confirmation failed for {email}: {e}")
+            return render(request, 'calc/resend_confirmation.html', {
+                'error': 'Failed to send email. Please try again later.',
+                'email': email
+            })
+
+        cache.set(cache_key, attempts + 1, timeout=3600)
+
+        return render(request, 'calc/resend_confirmation.html', {
+            'success': True,
+            'email': email
+        })
+
+    return render(request, 'calc/resend_confirmation.html')
+
+
+# ==================================================
+# PROFILE PICTURE
+# ==================================================
+@login_required
+def update_profile_picture(request):
+    profile = get_object_or_404(StudentProfile, user=request.user)
+
+    if request.method == 'POST':
+        form = ProfilePictureForm(
+            request.POST,
+            request.FILES,
+            instance=profile
+        )
+        if form.is_valid():
+            if profile.profile_picture:
+                try:
+                    old_path = profile.profile_picture.path
+                    if os.path.isfile(old_path):
+                        os.remove(old_path)
+                except Exception:
+                    pass
+
+            form.save()
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'picture_url': profile.profile_picture.url
+                })
+
+            return redirect('dashboard')
+
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+
+    return redirect('dashboard')
+
+
+# ==================================================
+# BASIC PAGES
+# ==================================================
+def home(request):
+    return render(request, 'calc/home.html')
+
+
+def base(request):
+    return render(request, 'calc/base.html')
+
+
+@login_required
+def dashboard(request):
+    profile = StudentProfile.objects.filter(user=request.user).first()
+    form = ProfilePictureForm(instance=profile) if profile else None
+    return render(request, 'calc/dashboard.html', {
+        'student_profile': profile,
+        'profile_picture_form': form
+    })
+
+
+# ==================================================
+# NOTIFICATIONS
+# ==================================================
+@login_required
+def student_queue_status(request):
+    entry = QueueEntry.objects.filter(
+        customer__email=request.user.email,
+        status__in=['waiting', 'serving']
+    ).select_related('queue').first()
+
+    if not entry:
+        return JsonResponse({
+            'in_queue': False,
+            'message': 'You are not currently in any queue.'
+        })
+
+    waiting_entries = list(
+        QueueEntry.objects.filter(
+            queue=entry.queue,
+            status='waiting'
+        ).order_by('entered_at')
+    )
+
+    position = None
+    for idx, e in enumerate(waiting_entries, start=1):
+        if e.id == entry.id:
+            position = idx
+            break
+
+    tickets_ahead = (position - 1) if position else 0
+    avg_service_time = get_avg_service_time_minutes()
+    eta_minutes = round(avg_service_time * tickets_ahead, 2)
+
+    return JsonResponse({
+        'in_queue': True,
+        'status': entry.status,
+        'ticket_number': entry.ticket_number,
+        'position': position,
+        'tickets_ahead': tickets_ahead,
+        'eta_minutes': eta_minutes,
+        'queue_name': entry.queue.name,
+        'is_being_served': entry.status == 'serving',
+    })
+
+
+@login_required
+def notifications_page(request):
+    entry = QueueEntry.objects.filter(
+        customer__email=request.user.email,
+        status__in=['waiting', 'serving']
+    ).select_related('queue').first()
+
+    return render(request, 'calc/notifications.html', {
+        'entry': entry
+    })
 
 
 # ==================================================
@@ -218,7 +437,6 @@ def queue_list(request):
     queues = []
     for q in Queue.objects.filter(is_active=True):
         allowed = [y.strip() for y in (q.allowed_years or "").split(",") if y.strip()]
-
         if year in allowed:
             queues.append(q)
 
@@ -226,7 +444,7 @@ def queue_list(request):
 
 
 # ==================================================
-# FIXED SAFE JOIN QUEUE (500 ERROR FIX)
+# JOIN QUEUE
 # ==================================================
 @login_required
 def join_queue(request, queue_id):
@@ -240,13 +458,11 @@ def join_queue(request, queue_id):
         return HttpResponse("Student profile missing")
 
     year = str(profile.valid_student.year_of_study)
-
     allowed = [y.strip() for y in (queue.allowed_years or "").split(",") if y.strip()]
 
     if year not in allowed:
         return HttpResponse("You are not allowed to join this queue.")
 
-    # prevent duplicates
     existing = QueueEntry.objects.filter(
         customer__email=request.user.email,
         queue=queue,
@@ -256,7 +472,9 @@ def join_queue(request, queue_id):
     if existing:
         pos_in_queue = 1
         if existing.status == 'waiting':
-            waiting_entries = list(QueueEntry.objects.filter(queue=queue, status='waiting').order_by('entered_at'))
+            waiting_entries = list(QueueEntry.objects.filter(
+                queue=queue, status='waiting'
+            ).order_by('entered_at'))
             for idx, entry in enumerate(waiting_entries, start=1):
                 if entry.id == existing.id:
                     pos_in_queue = idx
@@ -276,15 +494,14 @@ def join_queue(request, queue_id):
         defaults={'name': request.user.username}
     )
 
-    # capacity check
-    if QueueEntry.objects.filter(queue=queue, status__in=['waiting', 'serving']).count() >= queue.max_capacity:
+    if QueueEntry.objects.filter(
+        queue=queue, status__in=['waiting', 'serving']
+    ).count() >= queue.max_capacity:
         return HttpResponse("Queue is full")
 
     service = Service.objects.filter(is_active=True).first()
     if not service:
         return HttpResponse("No active service available.")
-
-    service_time = service.estimated_time or 5
 
     try:
         with transaction.atomic():
@@ -303,7 +520,6 @@ def join_queue(request, queue_id):
             )
 
     except IntegrityError:
-        # fallback
         with transaction.atomic():
             queue_locked = Queue.objects.select_for_update().get(id=queue.id)
             next_position = queue_locked.current_ticket_number + 1
@@ -338,28 +554,21 @@ def send_student_notification(entry, message_text):
     try:
         user = User.objects.filter(email=entry.customer.email).first()
         if not user:
-            logger.warning(f"No User found for customer email {entry.customer.email}. Notification skipped.")
+            logger.warning(f"No User found for customer email {entry.customer.email}.")
             return {"success": False, "error": "No User found for email"}
 
         subscriptions = PushSubscription.objects.filter(user=user)
         if not subscriptions.exists():
-            logger.info(f"User {user.username} has no push subscriptions. Notification skipped.")
-            return {"success": False, "error": "User has no push subscriptions"}
+            logger.info(f"User {user.username} has no push subscriptions.")
+            return {"success": False, "error": "No push subscriptions"}
 
         payload = {
             "model": "llama-3.1-8b-instant",
             "messages": [{"role": "user", "content": message_text}]
         }
-        
-        logger.info(f"Dispatching notification to {user.username} ({user.email}) with message: {message_text}")
-        result = call_groq_api(payload)
-        
-        if result.get("success"):
-            logger.info(f"Successfully dispatched notification to {user.username} ({user.email}). Groq Response: {result.get('response')}")
-        else:
-            logger.error(f"Failed to dispatch notification to {user.username} ({user.email}). Error: {result.get('error')}")
 
-        # Save log entry
+        result = call_groq_api(payload)
+
         NotificationLog.objects.create(
             user=user,
             email=user.email,
@@ -369,11 +578,11 @@ def send_student_notification(entry, message_text):
         )
 
         return result
+
     except Exception as e:
-        logger.error(f"Unexpected exception in send_student_notification for customer email {entry.customer.email}: {e}")
-        # Save log entry for unexpected errors
+        logger.error(f"Notification error for {entry.customer.email}: {e}")
         NotificationLog.objects.create(
-            user=user if user else None,
+            user=None,
             email=entry.customer.email,
             message_text=message_text,
             success=False,
@@ -394,14 +603,16 @@ def get_avg_service_time_minutes():
         diff = entry.served_at - entry.entered_at
         total_seconds += diff.total_seconds()
         count += 1
-    
+
     if count > 0:
         return (total_seconds / count) / 60.0
     return 5.0
 
 
 def get_waiting_entries(queue):
-    waiting_entries = list(QueueEntry.objects.filter(queue=queue, status='waiting').order_by('entered_at'))
+    waiting_entries = list(QueueEntry.objects.filter(
+        queue=queue, status='waiting'
+    ).order_by('entered_at'))
 
     avg_service_time = get_avg_service_time_minutes()
 
@@ -417,11 +628,6 @@ def get_waiting_entries(queue):
 # ==================================================
 @staff_member_required
 def analytics_dashboard(request):
-    """Show average wait time, average service time, and total served.
-
-    Optionally filter by queue via GET param `queue_id`.
-    Only uses entries with status='served' and non-null timestamps.
-    """
     queue = None
     queue_id = request.GET.get('queue_id')
     if queue_id:
@@ -440,7 +646,6 @@ def analytics_dashboard(request):
     if queue:
         entries = entries.filter(queue=queue)
 
-    # Aggregations using Duration expressions
     wait_expr = ExpressionWrapper(F('served_at') - F('entered_at'), output_field=DurationField())
     service_expr = ExpressionWrapper(F('completed_at') - F('served_at'), output_field=DurationField())
 
@@ -448,9 +653,6 @@ def analytics_dashboard(request):
         avg_wait=Avg(wait_expr),
         avg_service=Avg(service_expr)
     )
-
-    avg_wait = aggs.get('avg_wait')
-    avg_service = aggs.get('avg_service')
 
     def minutes(td):
         if not td:
@@ -460,19 +662,17 @@ def analytics_dashboard(request):
         except Exception:
             return None
 
-    context = {
+    return render(request, 'calc/analytics_dashboard.html', {
         'queue': queue,
-        'avg_wait_minutes': minutes(avg_wait),
-        'avg_service_minutes': minutes(avg_service),
+        'avg_wait_minutes': minutes(aggs.get('avg_wait')),
+        'avg_service_minutes': minutes(aggs.get('avg_service')),
         'total_served': entries.count(),
         'queues': Queue.objects.filter(is_active=True)
-    }
-
-    return render(request, 'calc/analytics_dashboard.html', context)
+    })
 
 
 # ==================================================
-# DISPLAY SCREEN (FIXED)
+# DISPLAY SCREEN
 # ==================================================
 @login_required
 def queue_display(request):
@@ -485,10 +685,7 @@ def queue_display(request):
 
     return render(request, 'calc/display.html', {
         'queue': queue,
-        'now_serving': QueueEntry.objects.filter(
-            queue=queue,
-            status='serving'
-        ).first(),
+        'now_serving': QueueEntry.objects.filter(queue=queue, status='serving').first(),
         'next_ticket': waiting_list[0] if waiting_list else None,
         'waiting_list': waiting_list
     })
@@ -499,21 +696,17 @@ def queue_display(request):
 # ==================================================
 @staff_member_required
 def staff_dashboard_home(request):
-    queues = Queue.objects.filter(is_active=True)
-
     return render(request, 'calc/staff_dashboard_home.html', {
-        'queues': queues
+        'queues': Queue.objects.filter(is_active=True)
     })
 
 
 @staff_member_required
 def queue_control_dashboard(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
-
-    page_number = request.GET.get('page', 1)
     log_entries = NotificationLog.objects.all()
-    paginator = Paginator(log_entries, 20)  # 20 logs per page
-    page_obj = paginator.get_page(page_number)
+    paginator = Paginator(log_entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
 
     return render(request, 'calc/admin_queue_dashboard.html', {
         'queue': queue,
@@ -523,15 +716,15 @@ def queue_control_dashboard(request, queue_id):
         'page_obj': page_obj,
     })
 
+
 @staff_member_required
 def get_notification_logs(request):
-    page_number = request.GET.get('page', 1)
+    log_entries = NotificationLog.objects.all()
+
     student_name = request.GET.get('student_name')
     status_filter = request.GET.get('status')
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
-
-    log_entries = NotificationLog.objects.all()
 
     if student_name:
         log_entries = log_entries.filter(user__username__icontains=student_name)
@@ -544,24 +737,21 @@ def get_notification_logs(request):
         end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
         log_entries = log_entries.filter(timestamp__date__lte=end_date)
 
-    # Summary stats
     total_notifications = log_entries.count()
     success_count = log_entries.filter(success=True).count()
-    failure_count = total_notifications - success_count
 
-    paginator = Paginator(log_entries, 20)  # 20 logs per page
-    page_obj = paginator.get_page(page_number)
-    
-    logs_data = []
-    for log in page_obj:
-        logs_data.append({
-            "timestamp": log.timestamp.isoformat(),
-            "student": log.user.username if log.user else "N/A",
-            "email": log.email,
-            "message": log.message_text,
-            "status": "Success" if log.success else "Failure",
-            "error": log.error
-        })
+    paginator = Paginator(log_entries, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    logs_data = [{
+        "timestamp": log.timestamp.isoformat(),
+        "student": log.user.username if log.user else "N/A",
+        "email": log.email,
+        "message": log.message_text,
+        "status": "Success" if log.success else "Failure",
+        "error": log.error
+    } for log in page_obj]
+
     return JsonResponse({
         "logs": logs_data,
         "num_pages": paginator.num_pages,
@@ -570,7 +760,7 @@ def get_notification_logs(request):
         "has_previous": page_obj.has_previous,
         "total_notifications": total_notifications,
         "success_count": success_count,
-        "failure_count": failure_count,
+        "failure_count": total_notifications - success_count,
     })
 
 
@@ -578,31 +768,21 @@ def get_notification_logs(request):
 @require_POST
 def queue_status_api(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
-
     current = QueueEntry.objects.filter(queue=queue, status='serving').first()
     waiting_entries = get_waiting_entries(queue)
 
-    current_data = None
-    if current:
-        current_data = {
+    return JsonResponse({
+        'current_entry': {
             'ticket_number': current.ticket_number,
             'customer_name': current.customer.name,
-        }
-
-    waiting_data = [
-        {
-            'position': entry.position,
-            'ticket_number': entry.ticket_number,
-            'customer_name': entry.customer.name,
-            'status': entry.status,
-            'eta': entry.eta_minutes,
-        }
-        for entry in waiting_entries
-    ]
-
-    return JsonResponse({
-        'current_entry': current_data,
-        'waiting_list': waiting_data,
+        } if current else None,
+        'waiting_list': [{
+            'position': e.position,
+            'ticket_number': e.ticket_number,
+            'customer_name': e.customer.name,
+            'status': e.status,
+            'eta': e.eta_minutes,
+        } for e in waiting_entries],
         'queue_paused': queue.is_paused,
         'auto_mode_enabled': queue.is_auto_mode_enabled,
         'auto_serve_interval': queue.auto_serve_interval,
@@ -612,10 +792,6 @@ def queue_status_api(request, queue_id):
 @login_required
 @require_POST
 def save_push_subscription(request):
-    """Save or update push subscription for the logged-in user.
-
-    Expects JSON body: { subscription: { endpoint: ..., keys: { p256dh: ..., auth: ... } } }
-    """
     try:
         payload = json.loads(request.body.decode('utf-8'))
         sub = payload.get('subscription')
@@ -625,13 +801,14 @@ def save_push_subscription(request):
 
         endpoint = sub.get('endpoint')
         keys = sub.get('keys', {})
-        p256dh = keys.get('p256dh', '')
-        auth_key = keys.get('auth', '')
 
         obj, created = PushSubscription.objects.update_or_create(
             user=request.user,
             endpoint=endpoint,
-            defaults={'p256dh': p256dh, 'auth_key': auth_key}
+            defaults={
+                'p256dh': keys.get('p256dh', ''),
+                'auth_key': keys.get('auth', '')
+            }
         )
 
         return JsonResponse({'status': 'ok', 'created': created})
@@ -643,24 +820,43 @@ def advance_queue(queue_id):
     now = timezone.now()
 
     current = QueueEntry.objects.filter(queue_id=queue_id, status='serving').first()
-
     if current:
         current.status = 'served'
         current.completed_at = now
         current.served_at = current.served_at or now
         current.save()
 
-    next_entry = QueueEntry.objects.filter(queue_id=queue_id, status='waiting').order_by('position').first()
+    next_entry = QueueEntry.objects.filter(
+        queue_id=queue_id, status='waiting'
+    ).order_by('entered_at').first()
 
     if next_entry:
         next_entry.status = 'serving'
         next_entry.served_at = now
         next_entry.save()
-        send_student_notification(next_entry, "You are now being served")
+        send_student_notification(
+            next_entry,
+            "It's your turn! Please proceed to the service desk now."
+        )
 
-    new_next_in_line = QueueEntry.objects.filter(queue_id=queue_id, status='waiting').order_by('position').first()
-    if new_next_in_line:
-        send_student_notification(new_next_in_line, "You are next in line")
+    waiting_entries = list(
+        QueueEntry.objects.filter(
+            queue_id=queue_id, status='waiting'
+        ).order_by('entered_at')
+    )
+
+    for idx, entry in enumerate(waiting_entries, start=1):
+        tickets_ahead = idx - 1
+        if tickets_ahead == 0:
+            send_student_notification(
+                entry,
+                "You are next in line! Get ready."
+            )
+        elif tickets_ahead == 2:
+            send_student_notification(
+                entry,
+                "Only 3 tickets ahead of you. Please be ready soon."
+            )
 
 
 @staff_member_required
@@ -672,12 +868,10 @@ def serve_current(request, queue_id):
 @staff_member_required
 def skip_current(request, queue_id):
     entry = QueueEntry.objects.filter(queue_id=queue_id, status='serving').first()
-
     if entry:
         entry.status = 'skipped'
         entry.completed_at = timezone.now()
         entry.save()
-
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
@@ -686,31 +880,26 @@ def toggle_queue_pause(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
     queue.is_paused = not queue.is_paused
     queue.save()
-
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
 @staff_member_required
 def toggle_auto_mode(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
-
     if request.method == 'POST':
         queue.is_auto_mode_enabled = not queue.is_auto_mode_enabled
         if queue.is_auto_mode_enabled:
             queue.last_auto_served_at = timezone.now()
         queue.save()
-
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
 @staff_member_required
 def set_auto_interval(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
-
     if request.method == 'POST':
-        interval = request.POST.get('auto_serve_interval')
         try:
-            interval_value = int(interval)
+            interval_value = int(request.POST.get('auto_serve_interval'))
             if interval_value > 0:
                 queue.auto_serve_interval = interval_value
                 if queue.is_auto_mode_enabled:
@@ -718,7 +907,6 @@ def set_auto_interval(request, queue_id):
                 queue.save()
         except (TypeError, ValueError):
             pass
-
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
@@ -728,7 +916,6 @@ def set_auto_interval(request, queue_id):
 @staff_member_required
 def staff_reports(request):
     today = timezone.localdate()
-
     return render(request, 'calc/staff_reports.html', {
         'today': today,
         'served_today': QueueEntry.objects.filter(status='served', completed_at__date=today).count(),
@@ -740,17 +927,11 @@ def staff_reports(request):
 @staff_member_required
 def export_reports_pdf(request):
     today = timezone.localdate()
-
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="report_{today}.pdf"'
 
     doc = SimpleDocTemplate(response, pagesize=letter)
     styles = getSampleStyleSheet()
-
-    elements = [
-        Paragraph("Queue Report", styles['Title']),
-        Spacer(1, 20)
-    ]
 
     data = [
         ['Metric', 'Value'],
@@ -761,13 +942,9 @@ def export_reports_pdf(request):
     ]
 
     table = Table(data)
-    table.setStyle(TableStyle([
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
+    table.setStyle(TableStyle([('GRID', (0, 0), (-1, -1), 1, colors.black)]))
 
-    elements.append(table)
-    doc.build(elements)
-
+    doc.build([Paragraph("Queue Report", styles['Title']), Spacer(1, 20), table])
     return response
 
 
@@ -776,10 +953,6 @@ def export_reports_pdf(request):
 def send_test_push(request):
     payload = {
         "model": "llama-3.1-8b-instant",
-        "messages": [{
-            "role": "user",
-            "content": "Test notification from SQMS"
-        }]
+        "messages": [{"role": "user", "content": "Test notification from SQMS"}]
     }
-    groq_response = call_groq_api(payload)
-    return JsonResponse(groq_response)
+    return JsonResponse(call_groq_api(payload))

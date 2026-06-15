@@ -58,6 +58,13 @@ class StudentProfile(models.Model):
         on_delete=models.CASCADE
     )
 
+    profile_picture = models.ImageField(
+        upload_to='profile_pictures/',
+        null=True,
+        blank=True,
+        default=None
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )

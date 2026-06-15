@@ -1,112 +1,46 @@
 {% extends 'calc/base.html' %}
 
 {% block head %}
-<style>
-    body {
-        background-color: #f8f9fa;
-        font-family: Tahoma, sans-serif;
-        margin: 0;
-        padding: 0;
-    }
-
-    /* Login form container */
-    #login_bar {
-        background-color: white;
-        width: 90%;
-        max-width: 400px;
-        margin: 80px auto;
-        padding: 30px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-
-    #login_bar h2 {
-        text-align: center;
-        font-size: 24px;
-        margin-bottom: 20px;
-    }
-
-    .input-field {
-        width: 100%;
-        padding: 12px;
-        margin: 10px 0;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 16px;
-        box-sizing: border-box;
-    }
-
-    .input-field:focus {
-        outline: none;
-        border-color: #405d9b;
-    }
-
-    #submit_button {
-        background-color: #42b72a;
-        color: white;
-        font-size: 18px;
-        font-weight: bold;
-        padding: 12px 0;
-        width: 100%;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-
-    #submit_button:hover {
-        background-color: #36a420;
-    }
-
-    .text-center {
-        text-align: center;
-        margin-top: 10px;
-    }
-
-    .text-center a {
-        color: #405d9b;
-        text-decoration: none;
-    }
-
-    .text-center a:hover {
-        text-decoration: underline;
-    }
-
-    /* Responsive tweaks for small devices */
-    @media screen and (max-width: 480px) {
-        #login_bar {
-            padding: 20px;
-            margin: 40px auto;
-        }
-
-        .input-field {
-            font-size: 14px;
-            padding: 10px;
-        }
-
-        #submit_button {
-            font-size: 16px;
-        }
-    }
-</style>
+<!-- keep your existing styles unchanged -->
+{{ block.super }}
 {% endblock %}
 
 {% block content %}
 <div id="login_bar">
     <h2>Login to SQMS Site</h2>
+
+    <!-- Show inactive account notice -->
     {% if inactive_notice %}
     <div class="alert alert-warning" role="alert">
         {{ inactive_notice }}
     </div>
     {% endif %}
+
+    <!-- Show Django messages (e.g. invalid login, 2FA prompts) -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-info" role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
     <form method="POST" action="{% url 'login' %}">
         {% csrf_token %}
         <input type="text" class="input-field" name="username" placeholder="Username" required>
         <input type="password" class="input-field" name="password" placeholder="Password" required>
+
+        <!-- Two-factor token field (only shown if required) -->
+        {% if form.otp_token %}
+        <input type="text" class="input-field" name="otp_token" placeholder="Authentication Code">
+        {% endif %}
+
         <button type="submit" id="submit_button">Login</button>
     </form>
+
     <div class="text-center">
         <p>Don't have an account? <a href="{% url 'register' %}">Register</a></p>
+        <p><a href="{% url 'password_reset' %}">Forgot your password?</a></p>
     </div>
 </div>
 {% endblock %}

@@ -81,6 +81,7 @@ Queue Control
         <!-- WAITING LIST -->
         <h4 class="mb-3">
             Waiting Students
+            <span class="badge bg-secondary" id="waiting-count">{{ waiting_list|length }}</span>
         </h4>
 
         <table class="table table-bordered">
@@ -136,6 +137,10 @@ Queue Control
                 }
 
                 const tbody = document.getElementById('waiting-list-tbody');
+                const countBadge = document.getElementById('waiting-count');
+                if (countBadge) {
+                    countBadge.textContent = data.waiting_list.length;
+                }
                 if (data.waiting_list.length > 0) {
                     tbody.innerHTML = data.waiting_list.map(entry => `
                         <tr>
@@ -157,6 +162,10 @@ Queue Control
     }
 
     setInterval(refreshQueueData, 10000);
+</script>
+
+<script>
+setTimeout(() => location.reload(), 10000);
 </script>
 
 {% endblock %}

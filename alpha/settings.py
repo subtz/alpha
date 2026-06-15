@@ -2,25 +2,21 @@ import dotenv
 dotenv.load_dotenv()
 import dj_database_url
 import os
-from decouple import config  # 🔑 Allows you to load secrets and environment variables from .env
+from decouple import config
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-SECRET_KEY = config('SECRET_KEY')  # Secret key for your Django app
+SECRET_KEY = config('SECRET_KEY')
 
-# Safe loading of DEBUG variable to avoid ValueError on invalid values (e.g. 'release')
 DEBUG_RAW = config('DEBUG', default='True')
 if isinstance(DEBUG_RAW, str):
     DEBUG = DEBUG_RAW.lower() in ('true', '1', 'yes', 'on')
 else:
     DEBUG = bool(DEBUG_RAW)
 
-ALLOWED_HOSTS = ['*']  # Or use your specific render domain e.g., ['your-app-name.onrender.com']
+ALLOWED_HOSTS = ['*']
 
-# ✅ Added Groq API key support
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
 INSTALLED_APPS = [
@@ -30,12 +26,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'calc',  #  app name
+    'calc',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise goes right after SecurityMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -64,7 +60,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'alpha.wsgi.application'
 
-# Database configuration
 DATABASE_URL = config('DATABASE_URL', default='', cast=str)
 if DATABASE_URL:
     DATABASES = {
@@ -82,49 +77,51 @@ else:
         }
     }
 
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Language and timezone settings
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, images)
 STATIC_URL = 'static/'
-
-# Directory where static files will be collected for production (only set once)
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Correct way for production
-
-# Storage engine for serving static files efficiently with WhiteNoise
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Email settings
-# Development: print emails to console
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Production placeholders (to be uncommented and set via environment in production)
-# EMAIL_HOST = config('EMAIL_HOST', default='')
-# EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-# EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-# EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-# DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='webmaster@localhost')
+# ==================================================
+# EMAIL
+# ==================================================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('EMAIL_HOST_USER', default='no-reply@sqms.com')
 
+# Verification/reset token expiry — 24 hours
+PASSWORD_RESET_TIMEOUT = 86400
+
+# ==================================================
+# CACHE (used for rate limiting resend emails)
+# ==================================================
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
+# ==================================================
+# AUTH
+# ==================================================
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'home'
