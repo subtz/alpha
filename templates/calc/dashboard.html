@@ -1,130 +1,98 @@
 {% extends 'calc/base.html' %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}
+Dashboard
+{% endblock %}
 
 {% block content %}
+
 <div class="container py-5">
-    <h2>Dashboard</h2>
-    <p>Welcome back, {{ user.username }}!</p>
 
-    <!-- Profile Picture Section -->
-    <div class="mb-4">
-        <div class="profile-avatar-wrapper" style="position:relative;display:inline-block;">
+    <div class="card shadow-sm border-0">
 
-          <!-- Avatar display -->
-          <img
-            id="profile-avatar"
-            src="{% if student_profile.profile_picture %}
-                   {{ student_profile.profile_picture.url }}
-                 {% else %}
-                   /static/calc/img/default-avatar.svg
-                 {% endif %}"
-            alt="Profile picture"
-            style="width:100px;height:100px;border-radius:50%;object-fit:cover;
-                   border:3px solid #dee2e6;cursor:pointer;"
-            onclick="document.getElementById('picture-input').click()"
-            title="Click to change profile picture"
-          >
+        <div class="card-body">
 
-          <!-- Camera icon overlay -->
-          <label for="picture-input"
-                 style="position:absolute;bottom:0;right:0;background:#0d6efd;
-                        color:white;border-radius:50%;width:28px;height:28px;
-                        display:flex;align-items:center;justify-content:center;
-                        cursor:pointer;font-size:14px;" title="Upload photo">
-            📷
-          </label>
+            <h2 class="mb-3">
+                Dashboard
+            </h2>
 
-          <!-- Hidden file input -->
-          <input
-            type="file"
-            id="picture-input"
-            name="profile_picture"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            style="display:none;"
-          >
+            <p class="text-muted">
+                Welcome back, {{ user.username }}!
+            </p>
+
+            {% if student_profile %}
+            <div class="mb-4">
+
+                <h5>
+                    Student Information
+                </h5>
+
+                <table class="table table-bordered">
+
+                    <tr>
+                        <th>Registration Number</th>
+                        <td>
+                            {{ student_profile.valid_student.registration_number }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Full Name</th>
+                        <td>
+                            {{ student_profile.valid_student.full_name }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Year Of Study</th>
+                        <td>
+                            {{ student_profile.valid_student.year_of_study }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Email</th>
+                        <td>
+                            {{ user.email }}
+                        </td>
+                    </tr>
+
+                </table>
+
+            </div>
+            {% endif %}
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-2">
+
+                <a href="{% url 'queue_list' %}"
+                   class="btn btn-primary">
+                    View Queues
+                </a>
+
+                <a href="{% url 'notifications' %}"
+                   class="btn btn-success">
+                    My Queue Status
+                </a>
+
+                <a href="{% url 'analytics_dashboard' %}"
+                   class="btn btn-secondary">
+                    Analytics
+                </a>
+
+            </div>
+
         </div>
 
-        <!-- Upload status message -->
-        <div id="upload-status" style="margin-top:8px;font-size:13px;"></div>
     </div>
 
-    <!-- Show Django messages (e.g. verification success, notices) -->
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-info" role="alert">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-
-    <!-- Navigation links -->
-    <div class="mb-3">
-        <a href="{% url 'queue_list' %}" class="btn btn-secondary">View Queues</a>
-        <a href="{% url 'notifications' %}" class="btn btn-secondary">
-          My Queue Status
-        </a>
-        <a href="{% url 'analytics_dashboard' %}" class="btn btn-secondary">Analytics</a>
-    </div>
-
-    <!-- Logout -->
-    <a href="{% url 'logout' %}" class="btn btn-primary">Logout</a>
 </div>
 
-<script>
-document.getElementById('picture-input').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  // Validate size client-side (2MB)
-  if (file.size > 2 * 1024 * 1024) {
-    document.getElementById('upload-status').innerHTML =
-      '<span style="color:red;">File too large. Max 2MB.</span>';
-    return;
-  }
-
-  // Show preview immediately before upload
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    document.getElementById('profile-avatar').src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-
-  // Upload via AJAX
-  const formData = new FormData();
-  formData.append('profile_picture', file);
-  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
-  document.getElementById('upload-status').innerHTML =
-    '<span style="color:grey;">Uploading...</span>';
-
-  fetch("{% url 'update_profile_picture' %}", {
-    method: 'POST',
-    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    body: formData
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      document.getElementById('profile-avatar').src =
-        data.picture_url + '?t=' + new Date().getTime();
-      document.getElementById('upload-status').innerHTML =
-        '<span style="color:green;">✓ Profile picture updated</span>';
-
-      // Clear status after 3 seconds
-      setTimeout(() => {
-        document.getElementById('upload-status').innerHTML = '';
-      }, 3000);
-
-    } else {
-      document.getElementById('upload-status').innerHTML =
-        '<span style="color:red;">Upload failed. Please try again.</span>';
-    }
-  })
-  .catch(() => {
-    document.getElementById('upload-status').innerHTML =
-      '<span style="color:red;">Upload failed. Please check your connection.</span>';
-  });
-});
-</script>
 {% endblock %}

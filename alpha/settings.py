@@ -53,6 +53,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'calc.context_processors.student_profile',
             ],
         },
     },
@@ -127,3 +128,14 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+VAPID_PUBLIC_KEY = config(
+    'VAPID_PUBLIC_KEY',
+    default=''
+)
+
+VAPID_PRIVATE_KEY = config(
+    'VAPID_PRIVATE_KEY',
+    default=''
+)

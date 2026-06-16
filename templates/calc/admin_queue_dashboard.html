@@ -8,398 +8,268 @@ Queue Control
 
 <div class="container mt-4">
 
-    <div class="card shadow-sm p-4">
+    <div class="card shadow-sm">
 
-        <h2 class="mb-4">
-            Queue Control:
-            {{ queue.name }}
-        </h2>
+        <div class="card-body">
 
-        <!-- CURRENT -->
-        <div class="mb-4" id="now-serving-section">
+            <h2 class="mb-4">
+                Queue Control: {{ queue.name }}
+            </h2>
 
-            <h4>
-                Now Serving
+            <!-- CURRENTLY SERVING -->
+
+            <div id="now-serving-section" class="mb-4">
+
+                <h4>Now Serving</h4>
+
+                {% if current_entry %}
+
+                    <div class="alert alert-success">
+
+                        <h3 class="mb-1">
+                            {{ current_entry.ticket_number }}
+                        </h3>
+
+                        <p class="mb-0">
+                            {{ current_entry.customer.name }}
+                        </p>
+
+                    </div>
+
+                {% else %}
+
+                    <div class="alert alert-warning">
+
+                        No student currently being served.
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+            <!-- ACTIONS -->
+
+            <div class="mb-4 d-flex flex-wrap gap-2">
+
+                <a href="{% url 'serve_current' queue.id %}"
+                   class="btn btn-success">
+
+                    Next Student
+
+                </a>
+
+                <a href="{% url 'skip_current' queue.id %}"
+                   class="btn btn-warning">
+
+                    Skip Student
+
+                </a>
+
+                <a href="{% url 'toggle_queue_pause' queue.id %}"
+                   class="btn btn-danger">
+
+                    {% if queue_paused %}
+                        Resume Queue
+                    {% else %}
+                        Pause Queue
+                    {% endif %}
+
+                </a>
+
+            </div>
+
+            <!-- WAITING LIST -->
+
+            <h4 class="mb-3">
+
+                Waiting Students
+
+                <span class="badge bg-secondary"
+                      id="waiting-count">
+
+                    {{ waiting_list|length }}
+
+                </span>
+
             </h4>
 
-            {% if current_entry %}
+            <div class="table-responsive">
 
-                <div class="alert alert-success">
+                <table class="table table-bordered table-striped">
 
-                    <h3>
-                        {{ current_entry.ticket_number }}
-                    </h3>
+                    <thead>
 
-                    <p>
-                        {{ current_entry.customer.name }}
-                    </p>
+                        <tr>
 
-                </div>
+                            <th>Position</th>
+                            <th>Ticket</th>
+                            <th>Name</th>
+                            <th>ETA</th>
 
-            {% else %}
+                        </tr>
 
-                <div class="alert alert-warning">
+                    </thead>
 
-                    No student currently serving.
+                    <tbody id="waiting-list-tbody">
 
-                </div>
+                        {% for entry in waiting_list %}
 
-            {% endif %}
+                        <tr>
+
+                            <td>{{ entry.position }}</td>
+                            <td>{{ entry.ticket_number }}</td>
+                            <td>{{ entry.customer.name }}</td>
+                            <td>{{ entry.eta_minutes }} mins</td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+
+                            <td colspan="4">
+
+                                No students waiting.
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
 
         </div>
-
-        <!-- ACTION BUTTONS -->
-        <div class="mb-4 d-flex gap-2">
-
-            <a href="{% url 'serve_current' queue.id %}"
-               class="btn btn-success">
-
-                Next Student
-
-            </a>
-
-            <a href="{% url 'skip_current' queue.id %}"
-               class="btn btn-warning">
-
-                Skip
-
-            </a>
-
-            <a href="{% url 'toggle_queue_pause' queue.id %}"
-               class="btn btn-danger">
-
-                {% if queue_paused %}
-                    Resume Queue
-                {% else %}
-                    Pause Queue
-                {% endif %}
-
-            </a>
-
-            <form action="{% url 'toggle_auto_mode' queue.id %}" method="post" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-secondary">
-                    {% if queue.is_auto_mode_enabled %}
-                        Disable Auto Mode
-                    {% else %}
-                        Enable Auto Mode
-                    {% endif %}
-                </button>
-            </form>
-
-            <form action="{% url 'set_auto_interval' queue.id %}" method="post" class="d-flex align-items-center gap-2">
-                {% csrf_token %}
-                <input type="number" min="1" name="auto_serve_interval" value="{{ queue.auto_serve_interval }}" class="form-control" style="width: 140px;">
-                <button type="submit" class="btn btn-primary">Set Interval</button>
-            </form>
-
-        </div>
-
-        <div class="mb-4">
-            <h5>Auto Mode</h5>
-            <p>Status:
-                <strong>
-                    {% if queue.is_auto_mode_enabled %}
-                        Enabled
-                    {% else %}
-                        Disabled
-                    {% endif %}
-                </strong>
-            </p>
-            <p>Interval:
-                <strong>{{ queue.auto_serve_interval }} minutes</strong>
-            </p>
-        </div>
-
-        <!-- WAITING LIST -->
-        <h4 class="mb-3">
-            Waiting Students
-        </h4>
-
-        <table class="table table-bordered">
-
-            <thead>
-
-                <tr>
-
-                    <th>Position</th>
-                    <th>Ticket</th>
-                    <th>Name</th>
-                    <th>ETA</th>
-                    <th>Status</th>
-
-                </tr>
-
-            </thead>
-
-            <tbody id="waiting-list-tbody">
-
-                {% for entry in waiting_list %}
-
-                    <tr>
-
-                        <td>
-                            {{ entry.position }}
-                        </td>
-
-                        <td>
-                            {{ entry.ticket_number }}
-                        </td>
-
-                        <td>
-                            {{ entry.customer.name }}
-                        </td>
-
-                        <td>
-                            {{ entry.eta_minutes }} mins
-                        </td>
-
-                        <td>
-                            {{ entry.status }}
-                        </td>
-
-                    </tr>
-
-                {% empty %}
-
-                    <tr>
-
-                        <td colspan="5">
-
-                            No students waiting.
-
-                        </td>
-
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
-        <h4 class="mb-3 mt-5">Notification Logs</h4>
-
-        <!-- Filter Form -->
-        <form id="notification-filter-form" class="mb-4" method="get" action=".">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <input type="text" name="student_name" class="form-control" placeholder="Student Name" value="{{ request.GET.student_name }}">
-                </div>
-                <div class="col-md-3">
-                    <select name="status" class="form-select">
-                        <option value="">All Statuses</option>
-                        <option value="success" {% if request.GET.status == 'success' %}selected{% endif %}>Success</option>
-                        <option value="failure" {% if request.GET.status == 'failure' %}selected{% endif %}>Failure</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
-                </div>
-                <div class="col-md-2">
-                    <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
-                </div>
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
-                </div>
-            </div>
-        </form>
-
-        <!-- Summary Stats -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card text-white bg-info mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Notifications</h5>
-                        <p class="card-text" id="total-notifications-stat">{{ total_notifications }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-white bg-success mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">Success Count</h5>
-                        <p class="card-text" id="success-count-stat">{{ success_count }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-white bg-danger mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">Failure Count</h5>
-                        <p class="card-text" id="failure-count-stat">{{ failure_count }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Student</th>
-                    <th>Email</th>
-                    <th>Message</th>
-                    <th>Status</th>
-                    <th>Error</th>
-                </tr>
-            </thead>
-            <tbody id="notification-logs-tbody">
-                {% for log in page_obj %}
-                    <tr>
-                        <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
-                        <td>{{ log.user.username|default:"N/A" }}</td>
-                        <td>{{ log.email }}</td>
-                        <td>{{ log.message_text }}</td>
-                        <td>
-                            {% if log.success %}
-                                <span class="badge bg-success">Success</span>
-                            {% else %}
-                                <span class="badge bg-danger">Failure</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ log.error|default:"N/A" }}</td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="6">No notification logs available.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&student_name={{ request.GET.student_name }}&status={{ request.GET.status }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}">Previous</a>
-                    </li>
-                {% endif %}
-                <li class="page-item disabled">
-                    <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                </li>
-                {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&student_name={{ request.GET.student_name }}&status={{ request.GET.status }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}">Next</a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
 
     </div>
 
 </div>
 
 <script>
-    function refreshQueueData() {
-        fetch("{% url 'queue_status_api' queue.id %}")
-            .then(response => response.json())
-            .then(data => {
-                // Update Now Serving
-                const nowServingDiv = document.getElementById(\'now-serving-section\');
-                if (data.current_entry) {
-                    nowServingDiv.innerHTML = `
-                        <h4>Now Serving</h4>
-                        <div class="alert alert-success">
-                            <h3>${data.current_entry.ticket_number}</h3>
-                            <p>${data.current_entry.customer_name}</p>
-                        </div>
-                    `;
-                } else {
-                    nowServingDiv.innerHTML = `
-                        <h4>Now Serving</h4>
-                        <div class="alert alert-warning">
-                            No student currently serving.
-                        </div>
-                    `;
-                }
 
-                // Update Waiting Students List
-                const tbody = document.getElementById(\'waiting-list-tbody\');
-                if (data.waiting_list.length > 0) {
-                    tbody.innerHTML = data.waiting_list.map(entry => `
-                        <tr>
-                            <td>${entry.position}</td>
-                            <td>${entry.ticket_number}</td>
-                            <td>${entry.customer_name}</td>
-                            <td>${entry.eta} mins</td>
-                            <td>${entry.status}</td>
-                        </tr>
-                    `).join(\'\');
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="5">No students waiting.</td>
-                        </tr>
-                    `;
-                }
-                // Refresh notification logs as well
-                refreshNotificationLogs();
-            })
-            .catch(err => console.error(\'Error fetching queue status:\', err));
+function getCookie(name) {
+
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== '') {
+
+        const cookies = document.cookie.split(';');
+
+        for (let i = 0; i < cookies.length; i++) {
+
+            const cookie = cookies[i].trim();
+
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
+
+                break;
+            }
+        }
     }
 
-    function refreshNotificationLogs() {
-        const studentName = document.querySelector("input[name=\'student_name\']").value;
-        const statusFilter = document.querySelector("select[name=\'status\']").value;
-        const startDate = document.querySelector("input[name=\'start_date\']").value;
-        const endDate = document.querySelector("input[name=\'end_date\']").value;
+    return cookieValue;
+}
 
-        let url = `{% url 'get_notification_logs' %}?page={{ page_obj.number }}`;
-        if (studentName) url += `&student_name=${studentName}`;
-        if (statusFilter) url += `&status=${statusFilter}`;
-        if (startDate) url += `&start_date=${startDate}`;
-        if (endDate) url += `&end_date=${endDate}`;
+function refreshQueueData() {
 
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                const tbody = document.getElementById(\'notification-logs-tbody\');
-                if (data.logs.length > 0) {
-                    tbody.innerHTML = data.logs.map(log => `
-                        <tr>
-                            <td>${log.timestamp}</td>
-                            <td>${log.student}</td>
-                            <td>${log.email}</td>
-                            <td>${log.message}</td>
-                            <td><span class="badge bg-${log.status === \'Success\' ? \'success\' : \'danger\'}">${log.status}</span></td>
-                            <td>${log.error || \'N/A\'}</td>
-                        </tr>
-                    `).join(\'\');
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6">No notification logs available.</td>
-                        </tr>
-                    `;
-                }
+    fetch(
+        "{% url 'queue_status_api' queue.id %}",
+        {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie("csrftoken"),
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        }
+    )
 
-                // Update summary stats
-                document.getElementById(\'total-notifications-stat\').innerText = data.total_notifications;
-                document.getElementById(\'success-count-stat\').innerText = data.success_count;
-                document.getElementById(\'failure-count-stat\').innerText = data.failure_count;
+    .then(response => response.json())
 
-                // Update pagination controls if needed
-                const paginationNav = document.querySelector(\'#notification-logs-tbody\').closest(\'nav\');
-                if (paginationNav) {
-                    let newPaginationHtml = \'<ul class="pagination justify-content-center">\';
-                    const baseUrl = `?student_name=${studentName}&status=${statusFilter}&start_date=${startDate}&end_date=${endDate}`;
+    .then(data => {
 
-                    if (data.has_previous) {
-                        newPaginationHtml += `<li class="page-item"><a class="page-link" href="${baseUrl}&page=${data.current_page - 1}">Previous</a></li>`;
-                    }
-                    newPaginationHtml += `<li class="page-item disabled"><span class="page-link">Page ${data.current_page} of ${data.num_pages}</span></li>`;
-                    if (data.has_next) {
-                        newPaginationHtml += `<li class="page-item"><a class="page-link" href="${baseUrl}&page=${data.current_page + 1}">Next</a></li>`;
-                    }
-                    newPaginationHtml += \'</ul>\';
-                    paginationNav.innerHTML = newPaginationHtml;
-                }
-            })
-            .catch(err => console.error(\'Error fetching notification logs:\', err));
-    }
+        const nowServing =
+            document.getElementById(
+                "now-serving-section"
+            );
 
-    // Poll every 10 seconds
-    setInterval(refreshQueueData, 10000);
+        if (data.current_entry) {
+
+            nowServing.innerHTML = `
+                <h4>Now Serving</h4>
+                <div class="alert alert-success">
+                    <h3>${data.current_entry.ticket_number}</h3>
+                    <p>${data.current_entry.customer_name}</p>
+                </div>
+            `;
+
+        } else {
+
+            nowServing.innerHTML = `
+                <h4>Now Serving</h4>
+                <div class="alert alert-warning">
+                    No student currently being served.
+                </div>
+            `;
+        }
+
+        const tbody =
+            document.getElementById(
+                "waiting-list-tbody"
+            );
+
+        document.getElementById(
+            "waiting-count"
+        ).textContent =
+            data.waiting_list.length;
+
+        if (data.waiting_list.length > 0) {
+
+            tbody.innerHTML =
+                data.waiting_list.map(entry => `
+                    <tr>
+                        <td>${entry.position}</td>
+                        <td>${entry.ticket_number}</td>
+                        <td>${entry.customer_name}</td>
+                        <td>${entry.eta} mins</td>
+                    </tr>
+                `).join("");
+
+        } else {
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4">
+                        No students waiting.
+                    </td>
+                </tr>
+            `;
+        }
+
+    })
+
+    .catch(error => {
+
+        console.error(
+            "Queue refresh failed:",
+            error
+        );
+
+    });
+}
+
+setInterval(
+    refreshQueueData,
+    10000
+);
+
 </script>
+
 {% endblock %}

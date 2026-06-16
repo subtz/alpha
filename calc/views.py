@@ -550,37 +550,83 @@ def join_queue(request, queue_id):
     })
 
 
+from pywebpush import webpush, WebPushException
+import json
+
+
 def send_student_notification(entry, message_text):
     try:
-        user = User.objects.filter(email=entry.customer.email).first()
+
+        user = User.objects.filter(
+            email=entry.customer.email
+        ).first()
+
         if not user:
-            logger.warning(f"No User found for customer email {entry.customer.email}.")
-            return {"success": False, "error": "No User found for email"}
+            return {
+                "success": False,
+                "error": "User not found"
+            }
 
-        subscriptions = PushSubscription.objects.filter(user=user)
+        subscriptions = PushSubscription.objects.filter(
+            user=user
+        )
+
         if not subscriptions.exists():
-            logger.info(f"User {user.username} has no push subscriptions.")
-            return {"success": False, "error": "No push subscriptions"}
+            return {
+                "success": False,
+                "error": "No subscriptions"
+            }
 
-        payload = {
-            "model": "llama-3.1-8b-instant",
-            "messages": [{"role": "user", "content": message_text}]
-        }
+        success_count = 0
 
-        result = call_groq_api(payload)
+        for sub in subscriptions:
+
+            subscription_info = {
+                "endpoint": sub.endpoint,
+                "keys": {
+                    "p256dh": sub.p256dh,
+                    "auth": sub.auth_key,
+                }
+            }
+
+            try:
+
+                webpush(
+                    subscription_info=subscription_info,
+                    data=json.dumps({
+                        "title": "SQMS Notification",
+                        "body": message_text
+                    }),
+                    vapid_private_key=settings.VAPID_PRIVATE_KEY,
+                    vapid_claims={
+                        "sub": "mailto:admin@sqms.com"
+                    }
+                )
+
+                success_count += 1
+
+            except WebPushException as e:
+
+                logger.error(
+                    f"Push failed: {e}"
+                )
 
         NotificationLog.objects.create(
             user=user,
             email=user.email,
             message_text=message_text,
-            success=result.get("success"),
-            error=result.get("error")
+            success=success_count > 0,
+            error="" if success_count > 0 else "Push failed"
         )
 
-        return result
+        return {
+            "success": success_count > 0
+        }
 
     except Exception as e:
-        logger.error(f"Notification error for {entry.customer.email}: {e}")
+
+        logger.error(str(e))
+
         NotificationLog.objects.create(
             user=None,
             email=entry.customer.email,
@@ -588,8 +634,11 @@ def send_student_notification(entry, message_text):
             success=False,
             error=str(e)
         )
-        return {"success": False, "error": str(e)}
 
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 def get_avg_service_time_minutes():
     served_entries = QueueEntry.objects.filter(
