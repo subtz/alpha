@@ -15,7 +15,7 @@ if isinstance(DEBUG_RAW, str):
 else:
     DEBUG = bool(DEBUG_RAW)
 
-ALLOWED_HOSTS = ['https://alpha-0xjx.onrender.com']
+ALLOWED_HOSTS = ['alpha-0xjx.onrender.com','127.0.0.1']
 CSRF_TRUSTED_ORIGINS = ["https://alpha-0xjx.onrender.com"]
 
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
