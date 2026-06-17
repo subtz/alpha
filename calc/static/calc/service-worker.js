@@ -1,7 +1,7 @@
 const CACHE_NAME = 'sqms-pwa-v1';
 const PRECACHE_RESOURCES = [
   '/static/calc/styles.css',
-  '/static/calc/ezzy.png',
+  '/static/calc/logo.png',
   '/static/calc/whatsapp.png',
   '/static/calc/manifest.json'
 ];
