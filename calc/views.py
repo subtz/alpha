@@ -187,7 +187,14 @@ def register(request):
                 send_mail(subject, message, from_email, [user.email], fail_silently=False)
             except Exception as e:
                 logger.error(f"Registration email failed for {user.email}: {e}")
+                messages.error(request, "There was an error sending the verification email. Please try again later.")
+                user.delete()  # Clean up the created user if email fails
+                return render(request, 'calc/register.html', {
+                    'form': form,
+                    'error': 'Failed to send verification email. Please try again.'
+                })
 
+            messages.success(request, f"A verification email has been sent to {user.email}. Please check your inbox.")
             return render(request, 'calc/verify_email_sent.html', {'email': user.email})
 
     return render(request, 'calc/register.html', {'form': form})
@@ -287,12 +294,14 @@ def resend_confirmation(request):
             send_mail(subject, message, from_email, [user.email], fail_silently=False)
         except Exception as e:
             logger.error(f"Resend confirmation failed for {email}: {e}")
+            messages.error(request, "Failed to send email. Please try again later.")
             return render(request, 'calc/resend_confirmation.html', {
                 'error': 'Failed to send email. Please try again later.',
                 'email': email
             })
 
         cache.set(cache_key, attempts + 1, timeout=3600)
+        messages.success(request, f"A new verification email has been sent to {email}. Please check your inbox.")
 
         return render(request, 'calc/resend_confirmation.html', {
             'success': True,
