@@ -209,7 +209,7 @@ def login_view(request):
                 })
 
             login(request, user)
-            send_security_email(user, 'new_login')
+         #   send_security_email(user, 'new_login')
             return redirect('dashboard')
 
         return render(request, 'calc/login.html', {
