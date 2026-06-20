@@ -550,8 +550,6 @@ def join_queue(request, queue_id):
 
     if waiting_count == 1:
         send_student_notification(entry, "You are next in line")
-    elif waiting_count == 4:
-        send_student_notification(entry, "Only 3 tickets ahead of you. Please be ready soon.")
 
     return render(request, 'calc/queue_join_success.html', {
         'entry': entry,
@@ -912,7 +910,7 @@ def advance_queue(queue_id):
                 entry,
                 "You are next in line! Get ready."
             )
-        elif tickets_ahead == 3:
+        elif tickets_ahead == 2:
             send_student_notification(
                 entry,
                 "Only 3 tickets ahead of you. Please be ready soon."
