@@ -7,12 +7,17 @@
   "background_color": "#f5f7fb",
   "icons": [
     {
-      "src": "/static/calc/logo.png",
+      "src": "/static/calc/images/logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/static/calc/whatsapp.png",
+      "src": "/static/calc/images/whatsapp.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/calc/images/ezzy.png",
       "sizes": "512x512",
       "type": "image/png"
     }

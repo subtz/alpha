@@ -297,7 +297,7 @@ Notifications
 <img src="{{ global_student_profile.profile_picture.url }}"
      class="profile-avatar me-2">
 {% else %}
-<img src="{% static 'calc/img/default-avatar.svg' %}"
+<img src="{% static 'calc/images/default-avatar.svg' %}"
      class="profile-avatar me-2">
 {% endif %}
 
@@ -437,6 +437,7 @@ splash.remove();
 </script>
 
 <script>
+const VAPID_PUBLIC_KEY = "{{ VAPID_PUBLIC_KEY }}";
 
 if ('serviceWorker' in navigator) {
 

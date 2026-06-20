@@ -89,11 +89,88 @@ if (notificationPermission === 'default') {
   });
 }
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+function subscribeUserToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn('Push messaging is not supported in this browser');
+    return;
+  }
+  navigator.serviceWorker.ready.then(function(registration) {
+    if (!VAPID_PUBLIC_KEY) {
+      console.warn('VAPID_PUBLIC_KEY is not defined');
+      return;
+    }
+    const subscribeOptions = {
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    };
+    return registration.pushManager.subscribe(subscribeOptions);
+  })
+  .then(function(pushSubscription) {
+    if (pushSubscription) {
+      console.log('Received PushSubscription: ', JSON.stringify(pushSubscription));
+      sendSubscriptionToBackEnd(pushSubscription);
+    }
+  })
+  .catch(function(error) {
+    console.error('Failed to subscribe the user: ', error);
+  });
+}
+
+function sendSubscriptionToBackEnd(subscription) {
+  const parsed = JSON.parse(JSON.stringify(subscription));
+  fetch("/push/subscribe/", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({
+      subscription: parsed
+    })
+  })
+  .then(function(response) {
+    if (!response.ok) {
+      throw new Error('Bad status code from server');
+    }
+    return response.json();
+  })
+  .then(function(responseData) {
+    console.log('Subscription saved successfully: ', responseData);
+  })
+  .catch(function(error) {
+    console.error('Could not save subscription on backend: ', error);
+  });
+}
+
+if (notificationPermission === 'default') {
+  Notification.requestPermission().then(p => {
+    notificationPermission = p;
+    if (p === 'granted') {
+      subscribeUserToPush();
+    }
+  });
+} else if (notificationPermission === 'granted') {
+  subscribeUserToPush();
+}
+
 function showBrowserNotification(title, body) {
   if (notificationPermission === 'granted') {
     new Notification(title, {
       body: body,
-      icon: '/static/calc/img/default-avatar.svg'
+      icon: '/static/calc/images/default-avatar.svg'
     });
   }
 }
