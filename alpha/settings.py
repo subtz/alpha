@@ -105,6 +105,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 
 # Load credentials from environment (.env or Render dashboard)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
@@ -115,7 +116,6 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Verification/reset token expiry — 24 hours
 PASSWORD_RESET_TIMEOUT = 86400
-
 
 # ==================================================
 # CACHE (used for rate limiting resend emails)
