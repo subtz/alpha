@@ -1,81 +1,176 @@
 {% extends 'calc/base.html' %}
 {% block title %}My Queue Status{% endblock %}
-{% block content %}
-<div class="container py-5" style="max-width:600px;">
-  <h2>My Queue Status</h2>
 
-  <div id="queue-status-card" class="card p-4 mb-4">
-    <div id="status-loading" style="color:grey;">
+{% block head %}
+<style>
+  .status-container {
+    max-width: 600px;
+    margin: 40px auto;
+  }
+  
+  #queue-status-card {
+    border-radius: var(--border-radius-lg) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--box-shadow-lg) !important;
+    position: relative;
+    overflow: hidden;
+    padding: 35px !important;
+  }
+  
+  #queue-status-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  }
+
+  .status-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+  }
+
+  #ticket-number {
+    font-family: "Georgia", serif;
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1.2;
+    margin-top: 4px;
+  }
+
+  #queue-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    margin-top: 4px;
+  }
+
+  #serving-banner {
+    display: none;
+    background: #e6f4ea !important;
+    border-left: 5px solid var(--success-color);
+    color: var(--success-color) !important;
+    padding: 18px;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    box-shadow: var(--box-shadow-sm);
+    animation: pulseGlow 2s infinite ease-in-out;
+  }
+
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(15, 118, 110, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0); }
+  }
+
+  #tickets-ahead {
+    font-family: "Georgia", serif;
+    font-size: 3.2rem;
+    font-weight: 800;
+    color: var(--primary-color) !important;
+    line-height: 1.1;
+    margin-top: 4px;
+  }
+
+  #eta-minutes {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 4px;
+  }
+
+  #warning-banner {
+    display: none;
+    background: #fffbeb !important;
+    border-left: 5px solid var(--accent-color);
+    color: var(--warning-color) !important;
+    padding: 14px;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 16px;
+    font-weight: 600;
+    box-shadow: var(--box-shadow-sm);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container status-container">
+  <h2 class="mb-4">My Queue Status</h2>
+
+  <div id="queue-status-card" class="card">
+    <div id="status-loading" style="color: var(--text-secondary); font-weight: 500;">
       Checking your queue status...
     </div>
     <div id="status-content" style="display:none;">
 
-      <div id="not-in-queue" style="display:none;">
-        <p class="text-muted">You are not currently in any queue.</p>
-        <a href="{% url 'queue_list' %}" class="btn btn-primary">
+      <div id="not-in-queue" style="display:none;" class="text-center py-4">
+        <p class="text-muted mb-4" style="font-size: 16px;">You are not currently in any queue.</p>
+        <a href="{% url 'queue_list' %}" class="btn btn-primary px-4 py-2">
           Join a Queue
         </a>
       </div>
 
       <div id="in-queue" style="display:none;">
-        <div class="mb-3">
-          <span style="font-size:13px;color:#6c757d;">Ticket number</span>
-          <div style="font-size:2rem;font-weight:600;"
-               id="ticket-number"></div>
+        <div class="mb-4">
+          <span class="status-label">Ticket number</span>
+          <div id="ticket-number"></div>
         </div>
 
-        <div class="mb-3">
-          <span style="font-size:13px;color:#6c757d;">Queue</span>
-          <div style="font-weight:500;" id="queue-name"></div>
+        <div class="mb-4">
+          <span class="status-label">Queue</span>
+          <div id="queue-name"></div>
         </div>
 
-        <div id="serving-banner"
-             style="display:none;background:#198754;color:white;
-                    padding:16px;border-radius:8px;margin-bottom:16px;
-                    font-size:1.1rem;font-weight:600;">
+        <div id="serving-banner">
           It's your turn! Please proceed to the service desk now.
         </div>
 
         <div id="waiting-info">
-          <div class="mb-2">
-            <span style="font-size:13px;color:#6c757d;">
+          <div class="mb-4">
+            <span class="status-label">
               Tickets ahead of you
             </span>
-            <div style="font-size:2.5rem;font-weight:700;
-                        color:#0d6efd;" id="tickets-ahead"></div>
+            <div id="tickets-ahead"></div>
           </div>
 
-          <div class="mb-3">
-            <span style="font-size:13px;color:#6c757d;">
+          <div class="mb-4">
+            <span class="status-label">
               Estimated wait
             </span>
-            <div style="font-weight:500;" id="eta-minutes"></div>
+            <div id="eta-minutes"></div>
           </div>
 
-          <div id="warning-banner"
-               style="display:none;background:#fff3cd;color:#856404;
-                      padding:12px;border-radius:8px;margin-bottom:12px;
-                      font-weight:500;">
+          <div id="warning-banner">
             Almost your turn — please be ready!
           </div>
 
-          <div style="margin-top:16px;">
-            <span style="font-size:13px;color:#6c757d;">
+          <div class="mt-4">
+            <span class="status-label">
               Your position
             </span>
             <div id="position-bar"
-                 style="margin-top:8px;display:flex;
-                        gap:6px;flex-wrap:wrap;"></div>
+                 style="margin-top:12px;display:flex;
+                        gap:8px;flex-wrap:wrap;"></div>
           </div>
         </div>
-      </div>
 
+      </div>
     </div>
   </div>
 
-  <a href="{% url 'dashboard' %}" class="btn btn-secondary">
-    Back to Dashboard
-  </a>
+  <div class="mt-4">
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary px-4 py-2">
+      Back to Dashboard
+    </a>
+  </div>
 </div>
 
 <script>
@@ -105,12 +200,14 @@ function renderPositionBar(position, total) {
   for (let i = 1; i <= show; i++) {
     const dot = document.createElement('div');
     dot.style.cssText = `
-      width:28px;height:28px;border-radius:50%;
+      width:32px;height:32px;border-radius:50%;
       display:flex;align-items:center;justify-content:center;
-      font-size:11px;font-weight:600;
+      font-size:12px;font-weight:700;
       background:${i < position ? '#dee2e6' :
-                  i === position ? '#0d6efd' : '#e9ecef'};
+                  i === position ? 'var(--primary-color)' : '#e9ecef'};
       color:${i === position ? 'white' : '#6c757d'};
+      border:${i === position ? '2px solid var(--accent-color)' : 'none'};
+      box-shadow:${i === position ? '0 2px 6px rgba(11,36,71,0.2)' : 'none'};
     `;
     dot.textContent = i;
     bar.appendChild(dot);
