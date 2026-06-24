@@ -145,3 +145,17 @@ VAPID_PRIVATE_KEY = config(
     'VAPID_PRIVATE_KEY',
     default=''
 )
+# ==================================================
+# AUTO-CREATE SUPERUSER (for Render free tier)
+# --------------------------------------------------
+# This block imports alpha/create_superuser.py at startup.
+# The script checks if a superuser exists in the database.
+# If not, it creates one using the DJANGO_SUPERUSER_* environment
+# variables you set in Render’s Environment tab.
+# This is required because free Render does not allow Shell access.
+# ==================================================
+try:
+    import create_superuser
+except Exception:
+    # Fail silently if the helper script is missing or errors out
+    pass
