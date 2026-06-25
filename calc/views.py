@@ -548,8 +548,19 @@ def join_queue(request, queue_id):
     waiting_count = QueueEntry.objects.filter(queue=queue, status='waiting').count()
     eta_minutes = round(avg_service_time * (waiting_count - 1), 2)
 
+    # Join queue notification (deep linked to notifications page)
+    send_student_notification(
+        entry,
+        f"You have joined the '{queue.name}' queue. Ticket: {entry.ticket_number}",
+        url=reverse("notifications")
+    )
+
     if waiting_count == 1:
-        send_student_notification(entry, "You are next in line")
+        send_student_notification(
+            entry,
+            "You are next in line! Get ready.",
+            url=reverse("notifications")
+        )
 
     return render(request, 'calc/queue_join_success.html', {
         'entry': entry,
@@ -563,9 +574,8 @@ from pywebpush import webpush, WebPushException
 import json
 
 
-def send_student_notification(entry, message_text):
+def send_student_notification(entry, message_text, url=None):
     try:
-
         user = User.objects.filter(
             email=entry.customer.email
         ).first()
@@ -588,8 +598,7 @@ def send_student_notification(entry, message_text):
 
         success_count = 0
 
-        for sub in subscriptions:
-
+        for sub in list(subscriptions):
             subscription_info = {
                 "endpoint": sub.endpoint,
                 "keys": {
@@ -599,26 +608,33 @@ def send_student_notification(entry, message_text):
             }
 
             try:
-
                 webpush(
                     subscription_info=subscription_info,
                     data=json.dumps({
                         "title": "SQMS Notification",
-                        "body": message_text
+                        "body": message_text,
+                        "url": url or "/notifications/"
                     }),
                     vapid_private_key=settings.VAPID_PRIVATE_KEY,
                     vapid_claims={
                         "sub": "mailto:admin@sqms.com"
                     }
                 )
-
                 success_count += 1
 
             except WebPushException as e:
-
                 logger.error(
-                    f"Push failed: {e}"
+                    f"Push failed for subscription {sub.id}: {e}"
                 )
+                # Remove invalid subscriptions automatically
+                try:
+                    if e.response is not None and e.response.status_code in [404, 410]:
+                        logger.info(
+                            f"Removing expired/invalid subscription {sub.id} for {user.email}"
+                        )
+                        sub.delete()
+                except Exception:
+                    pass
 
         NotificationLog.objects.create(
             user=user,
@@ -633,11 +649,16 @@ def send_student_notification(entry, message_text):
         }
 
     except Exception as e:
+        logger.error(f"Failed to send push notification to {entry.customer.email}: {e}")
 
-        logger.error(str(e))
+        # Ensure user can be retrieved safely
+        try:
+            assoc_user = User.objects.filter(email=entry.customer.email).first()
+        except Exception:
+            assoc_user = None
 
         NotificationLog.objects.create(
-            user=None,
+            user=assoc_user,
             email=entry.customer.email,
             message_text=message_text,
             success=False,
@@ -883,6 +904,12 @@ def advance_queue(queue_id):
         current.completed_at = now
         current.served_at = current.served_at or now
         current.save()
+        # Queue entry completion event trigger
+        send_student_notification(
+            current,
+            f"Your service in the queue has been completed. Thank you!",
+            url=reverse("notifications")
+        )
 
     next_entry = QueueEntry.objects.filter(
         queue_id=queue_id, status='waiting'
@@ -892,9 +919,11 @@ def advance_queue(queue_id):
         next_entry.status = 'serving'
         next_entry.served_at = now
         next_entry.save()
+        # Student now being served trigger
         send_student_notification(
             next_entry,
-            "It's your turn! Please proceed to the service desk now."
+            "It's your turn! Please proceed to the service desk now.",
+            url=reverse("notifications")
         )
 
     waiting_entries = list(
@@ -906,14 +935,17 @@ def advance_queue(queue_id):
     for idx, entry in enumerate(waiting_entries, start=1):
         tickets_ahead = idx - 1
         if tickets_ahead == 0:
+            # Student next in line trigger
             send_student_notification(
                 entry,
-                "You are next in line! Get ready."
+                "You are next in line! Get ready.",
+                url=reverse("notifications")
             )
         elif tickets_ahead == 2:
             send_student_notification(
                 entry,
-                "Only 3 tickets ahead of you. Please be ready soon."
+                "Only 3 tickets ahead of you. Please be ready soon.",
+                url=reverse("notifications")
             )
 
 
@@ -930,6 +962,12 @@ def skip_current(request, queue_id):
         entry.status = 'skipped'
         entry.completed_at = timezone.now()
         entry.save()
+        # Cancelled trigger
+        send_student_notification(
+            entry,
+            f"Your ticket {entry.ticket_number} has been cancelled/skipped.",
+            url=reverse("notifications")
+        )
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
@@ -938,6 +976,19 @@ def toggle_queue_pause(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
     queue.is_paused = not queue.is_paused
     queue.save()
+
+    # Paused / Resumed trigger
+    status_message = "paused" if queue.is_paused else "resumed"
+    entries_in_queue = QueueEntry.objects.filter(
+        queue=queue, status__in=["waiting", "serving"]
+    )
+    for entry in entries_in_queue:
+        send_student_notification(
+            entry,
+            f"The '{queue.name}' queue has been {status_message}.",
+            url=reverse("notifications")
+        )
+
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 

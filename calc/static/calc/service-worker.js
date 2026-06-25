@@ -28,8 +28,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-self.addEventListener('fetch', event => {
-  // Never cache profile pictures or media files
+self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('/media/')) {
     event.respondWith(fetch(event.request));
     return;
@@ -40,8 +39,49 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
+    caches.match(event.request).then((cachedResponse) => {
       return cachedResponse || fetch(event.request);
     })
+  );
+});
+
+self.addEventListener('push', (event) => {
+  const data = event.data.json();
+  console.log('Push received:', data);
+
+  const title = data.title || 'SQMS Notification';
+  const options = {
+    body: data.body,
+    icon: data.icon || '/static/calc/logo.png',
+    badge: '/static/calc/logo.png',
+    data: {
+      url: data.url || '/notifications/',
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients
+      .matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      })
+      .then((clientList) => {
+        if (clientList.length > 0) {
+          let client = clientList[0];
+          for (let i = 0; i < clientList.length; i++) {
+            if (clientList[i].focused) {
+              client = clientList[i];
+            }
+          }
+          return client.focus();
+        } else {
+          return clients.openWindow(event.notification.data.url);
+        }
+      })
   );
 });
