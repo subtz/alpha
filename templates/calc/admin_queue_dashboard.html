@@ -48,34 +48,47 @@ Queue Control
 
             </div>
 
-            <!-- ACTIONS -->
+            <!-- STATUS -->
 
-            <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-                <span class="badge bg-{{ 'warning' if queue.is_paused else 'success' }}">
-                    {% if queue_paused %}Queue Paused{% else %}Queue Running{% endif %}
-                </span>
-                <span class="badge bg-{{ 'info' if queue.is_auto_mode_enabled else 'secondary' }}">
-                    {% if queue.is_auto_mode_enabled %}Auto Mode Enabled{% else %}Auto Mode Disabled{% endif %}
-                </span>
-                {% if queue.is_auto_mode_enabled %}
-                <span class="badge bg-secondary">
-                    Interval: {{ queue.auto_serve_interval }} min
-                </span>
-                {% endif %}
-            </div>
             <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
-                <span id="queue-paused-badge" class="badge bg-{{ 'warning' if queue_paused else 'success' }}">
-                    {% if queue_paused %}Queue Paused{% else %}Queue Running{% endif %}
-                </span>
-                <span id="queue-auto-badge" class="badge bg-{{ 'info' if queue.is_auto_mode_enabled else 'secondary' }}">
-                    {% if queue.is_auto_mode_enabled %}Auto Mode Enabled{% else %}Auto Mode Disabled{% endif %}
-                </span>
+                {% if queue.is_paused %}
+                    <span id="queue-paused-badge" class="badge bg-warning">Queue Paused</span>
+                {% else %}
+                    <span id="queue-paused-badge" class="badge bg-success">Queue Running</span>
+                {% endif %}
                 {% if queue.is_auto_mode_enabled %}
-                <span id="queue-auto-interval" class="badge bg-secondary">
+                    <span id="queue-auto-badge" class="badge bg-info">Auto Mode Enabled</span>
+                {% else %}
+                    <span id="queue-auto-badge" class="badge bg-secondary">Auto Mode Disabled</span>
+                {% endif %}
+                <span id="queue-auto-interval" class="badge bg-secondary" {% if not queue.is_auto_mode_enabled %}style="display:none;"{% endif %}>
                     Interval: {{ queue.auto_serve_interval }} min
                 </span>
+            </div>
+
+            <div class="mb-4">
+                <form method="post" action="{% url 'set_auto_interval' queue.id %}" class="row g-2 align-items-center">
+                    {% csrf_token %}
+                    <div class="col-auto">
+                        <label for="auto-interval-input" class="visually-hidden">Interval (minutes)</label>
+                        <input id="auto-interval-input" name="auto_serve_interval" type="number" min="1" step="1" value="{{ queue.auto_serve_interval|default_if_none:0 }}" class="form-control" placeholder="Interval minutes">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-outline-primary">
+                            Save interval
+                        </button>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted">Set the auto serve interval manually, for example 2 minutes before the next ticket is called.</small>
+                    </div>
+                </form>
+                {% if queue.auto_serve_interval <= 0 %}
+                    <p class="mt-2 mb-0 text-warning">
+                        Auto mode requires a positive interval. Save an interval to enable automatic ticket serving.
+                    </p>
                 {% endif %}
             </div>
+
             <div class="mb-4 d-flex flex-wrap gap-2">
 
                 <a href="{% url 'serve_current' queue.id %}"
@@ -102,6 +115,16 @@ Queue Control
                     {% endif %}
 
                 </a>
+
+                <button id="auto-mode-toggle-btn"
+                        type="button"
+                        class="btn {% if queue.is_auto_mode_enabled %}btn-danger{% else %}btn-success{% endif %}">
+                    {% if queue.is_auto_mode_enabled %}
+                        Disable Auto Mode
+                    {% else %}
+                        Enable Auto Mode
+                    {% endif %}
+                </button>
 
             </div>
 
@@ -270,6 +293,17 @@ function refreshQueueData() {
         }
         if (intervalBadge) {
             intervalBadge.textContent = `Interval: ${data.auto_serve_interval} min`;
+            intervalBadge.style.display = data.auto_mode_enabled ? '' : 'none';
+        }
+        const autoToggleBtn = document.getElementById('auto-mode-toggle-btn');
+        if (autoToggleBtn) {
+            if (data.auto_mode_enabled) {
+                autoToggleBtn.textContent = 'Disable Auto Mode';
+                autoToggleBtn.className = 'btn btn-danger';
+            } else {
+                autoToggleBtn.textContent = 'Enable Auto Mode';
+                autoToggleBtn.className = 'btn btn-success';
+            }
         }
 
         if (data.waiting_list.length > 0) {
@@ -311,6 +345,36 @@ setInterval(
     refreshQueueData,
     3000
 );
+
+const autoModeButton = document.getElementById('auto-mode-toggle-btn');
+if (autoModeButton) {
+    autoModeButton.addEventListener('click', () => {
+        fetch('{% url "toggle_auto_mode" queue.id %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+.then(async response => {
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => null);
+                        console.error('Auto mode toggle failed:', errorData || response.statusText);
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.auto_mode_enabled !== undefined) {
+                refreshQueueData();
+            }
+        })
+        .catch(error => {
+            console.error('Auto mode toggle failed:', error);
+        });
+    });
+}
 
 </script>
 

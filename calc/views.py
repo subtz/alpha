@@ -1171,10 +1171,24 @@ def toggle_queue_pause(request, queue_id):
 def toggle_auto_mode(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
     if request.method == 'POST':
+        if not queue.is_auto_mode_enabled and queue.auto_serve_interval <= 0:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'error': 'auto_interval_required',
+                    'message': 'Please set a positive auto serve interval before enabling Auto Mode.'
+                }, status=400)
+            return redirect('queue_control_dashboard', queue_id=queue_id)
+
         queue.is_auto_mode_enabled = not queue.is_auto_mode_enabled
         if queue.is_auto_mode_enabled:
             queue.last_auto_served_at = timezone.now()
         queue.save()
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'auto_mode_enabled': queue.is_auto_mode_enabled,
+                'queue_paused': queue.is_paused,
+                'auto_serve_interval': queue.auto_serve_interval,
+            })
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 

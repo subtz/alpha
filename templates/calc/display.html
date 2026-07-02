@@ -44,44 +44,20 @@ Queue Control
 
             </div>
 
-            <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-                <span class="badge bg-{{ 'warning' if queue.is_paused else 'success' }}">
-                    {% if queue.is_paused %}Queue Paused{% else %}Queue Running{% endif %}
-                </span>
-                <span class="badge bg-{{ 'info' if queue.is_auto_mode_enabled else 'secondary' }}">
-                    {% if queue.is_auto_mode_enabled %}Auto Mode Enabled{% else %}Auto Mode Disabled{% endif %}
-                </span>
+            <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
+                {% if queue.is_paused %}
+                    <span id="display-queue-paused" class="badge bg-warning">Queue Paused</span>
+                {% else %}
+                    <span id="display-queue-paused" class="badge bg-success">Queue Running</span>
+                {% endif %}
                 {% if queue.is_auto_mode_enabled %}
-                <span class="badge bg-secondary">
+                    <span id="display-queue-auto" class="badge bg-info">Auto Mode Enabled</span>
+                {% else %}
+                    <span id="display-queue-auto" class="badge bg-secondary">Auto Mode Disabled</span>
+                {% endif %}
+                <span id="display-queue-interval" class="badge bg-secondary" {% if not queue.is_auto_mode_enabled %}style="display:none;"{% endif %}>
                     Interval: {{ queue.auto_serve_interval }} min
                 </span>
-                {% endif %}
-            </div>
-            <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-                <span class="badge bg-{{ 'warning' if queue.is_paused else 'success' }}">
-                    {% if queue.is_paused %}Queue Paused{% else %}Queue Running{% endif %}
-                </span>
-                <span class="badge bg-{{ 'info' if queue.is_auto_mode_enabled else 'secondary' }}">
-                    {% if queue.is_auto_mode_enabled %}Auto Mode Enabled{% else %}Auto Mode Disabled{% endif %}
-                </span>
-                {% if queue.is_auto_mode_enabled %}
-                <span class="badge bg-secondary">
-                    Interval: {{ queue.auto_serve_interval }} min
-                </span>
-                {% endif %}
-            </div>
-            <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-                <span id="display-queue-paused" class="badge bg-{{ 'warning' if queue.is_paused else 'success' }}">
-                    {% if queue.is_paused %}Queue Paused{% else %}Queue Running{% endif %}
-                </span>
-                <span id="display-queue-auto" class="badge bg-{{ 'info' if queue.is_auto_mode_enabled else 'secondary' }}">
-                    {% if queue.is_auto_mode_enabled %}Auto Mode Enabled{% else %}Auto Mode Disabled{% endif %}
-                </span>
-                {% if queue.is_auto_mode_enabled %}
-                <span id="display-queue-interval" class="badge bg-secondary">
-                    Interval: {{ queue.auto_serve_interval }} min
-                </span>
-                {% endif %}
             </div>
             <div class="mb-4 d-flex flex-wrap gap-2">
 
@@ -271,6 +247,7 @@ function refreshQueueData() {
         }
         if (intervalBadge) {
             intervalBadge.textContent = `Interval: ${data.auto_serve_interval} min`;
+            intervalBadge.style.display = data.auto_mode_enabled ? '' : 'none';
         }
 
         if (data.waiting_list.length > 0) {
