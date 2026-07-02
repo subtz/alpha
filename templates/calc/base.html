@@ -561,10 +561,10 @@ Notifications
    data-bs-toggle="dropdown">
 
 {% if global_student_profile and global_student_profile.profile_picture %}
-<img src="{{ global_student_profile.profile_picture.url }}"
+<img id="navbar-profile-pic" src="{{ global_student_profile.profile_picture.url }}"
      class="profile-avatar me-2">
 {% else %}
-<img src="{% static 'calc/img/default-avatar.svg' %}"
+<img id="navbar-profile-pic" src="{% static 'calc/img/default-avatar.svg' %}"
      class="profile-avatar me-2">
 {% endif %}
 

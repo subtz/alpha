@@ -76,6 +76,7 @@ Dashboard
             <img id="profile-picture-modal-preview" class="preview-image" src="{% if student_profile.profile_picture %}{{ student_profile.profile_picture.url }}{% else %}{% static 'calc/img/default-avatar.svg' %}{% endif %}" alt="Current profile picture preview">
         </div>
         <form id="profile-picture-modal-form">
+            {% csrf_token %}
             <div class="mb-3">
                 <label for="modal_profile_picture" class="form-label">Select a new image</label>
                 <input type="file" class="form-control" id="modal_profile_picture" name="profile_picture" accept="image/jpeg,image/png">
@@ -117,12 +118,12 @@ Dashboard
                                 class="profile-picture-link d-inline-block open-profile-picture-modal"
                                 title="Change profile picture">
                             {% if student_profile.profile_picture %}
-                                <img src="{{ student_profile.profile_picture.url }}"
+                                <img id="dashboard-profile-pic" src="{{ student_profile.profile_picture.url }}"
                                     alt="Profile Picture"
                                     class="img-fluid rounded-circle"
                                     style="max-width: 140px;">
                             {% else %}
-                                <img src="{% static 'calc/img/default-avatar.svg' %}"
+                                <img id="dashboard-profile-pic" src="{% static 'calc/img/default-avatar.svg' %}"
                                     alt="Profile Picture"
                                     class="img-fluid rounded-circle"
                                     style="max-width: 140px;">
@@ -260,7 +261,8 @@ setInterval(updateDashboardStatus, 3000);
     const fileInput = document.getElementById('modal_profile_picture');
     const previewImage = document.getElementById('profile-picture-modal-preview');
     const errorContainer = document.getElementById('profile-picture-modal-error');
-    const dashboardImage = document.querySelector('.profile-picture-link img');
+    const dashboardImage = document.getElementById('dashboard-profile-pic');
+    const navbarImage = document.getElementById('navbar-profile-pic');
     const uploadUrl = '{% url "update_profile_picture" %}';
     const maxFileSize = 2 * 1024 * 1024;
     const allowedTypes = ['image/jpeg', 'image/png'];
@@ -348,23 +350,52 @@ setInterval(updateDashboardStatus, 3000);
         const formData = new FormData();
         formData.append('profile_picture', file);
 
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+
         try {
             const response = await fetch(uploadUrl, {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
                 },
                 credentials: 'same-origin',
                 redirect: 'follow'
             });
 
-            if (response.redirected) {
-                dashboardImage.src = previewImage.src;
+            const text = await response.text();
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (error) {
+                json = null;
+            }
+
+            if (response.ok && json && json.success) {
+                const imageUrl = json.image_url;
+                dashboardImage.src = imageUrl;
+                if (navbarImage) {
+                    navbarImage.src = imageUrl;
+                }
+                previewImage.src = imageUrl;
                 closeModal();
             } else {
-                const text = await response.text();
-                errorContainer.textContent = parseServerErrors(text);
+                if (json && json.errors) {
+                    const messages = [];
+                    Object.values(json.errors).forEach(arr => {
+                        if (Array.isArray(arr)) {
+                            messages.push(...arr);
+                        } else if (typeof arr === 'string') {
+                            messages.push(arr);
+                        }
+                    });
+                    errorContainer.textContent = messages.join(' ');
+                } else if (json && json.error) {
+                    errorContainer.textContent = json.error;
+                } else {
+                    errorContainer.textContent = parseServerErrors(text);
+                }
                 saveButton.disabled = false;
                 saveButton.textContent = 'Save';
             }

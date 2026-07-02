@@ -100,9 +100,24 @@ def update_profile_picture(request):
     if form.is_valid():
         form.save()
         messages.success(request, 'Profile picture updated successfully!')
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'image_url': student_profile.profile_picture.url
+            })
         return redirect('dashboard')
 
     messages.error(request, 'Error updating profile picture. Please check the file type and size.')
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        errors = {
+            field: [str(error) for error in error_list]
+            for field, error_list in form.errors.items()
+        }
+        return JsonResponse({
+            'success': False,
+            'errors': errors
+        }, status=400)
+
     return render(request, 'calc/profile_picture_upload.html', {
         'form': form,
         'student_profile': student_profile
