@@ -391,7 +391,11 @@ def update_profile_picture(request):
 # BASIC PAGES
 # ==================================================
 def home(request):
-    return render(request, 'calc/home.html')
+    try:
+        return render(request, 'calc/home.html')
+    except Exception:
+        logger.exception('Unhandled exception in home view')
+        raise
 
 
 def base(request):
