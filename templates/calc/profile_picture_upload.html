@@ -68,7 +68,8 @@ SQMS | Upload Profile Picture
                     {% endif %}
                 </div>
 
-                <form method="POST"
+                <form action="{% url 'update_profile_picture' %}"
+                      method="POST"
                       enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="mb-3">
@@ -78,7 +79,7 @@ SQMS | Upload Profile Picture
                                class="form-control"
                                id="id_profile_picture"
                                name="profile_picture"
-                               accept="image/jpeg,image/png,image/webp">
+                               accept="image/jpeg,image/png">
                         {% if form.profile_picture.errors %}
                             {% for error in form.profile_picture.errors %}
                                 <p class="text-danger mt-2">{{ error }}</p>
@@ -87,6 +88,7 @@ SQMS | Upload Profile Picture
                     </div>
                     <div class="d-grid gap-2">
                         <button type="submit"
+                                formaction="{% url 'update_profile_picture' %}"
                                 class="btn btn-primary btn-upload">
                             {% if student_profile.profile_picture %}
                                 Change Profile Picture

@@ -7,6 +7,88 @@ Dashboard
 
 {% block content %}
 
+<style>
+    .profile-picture-link {
+        display: inline-block;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        padding: 0;
+    }
+
+    .modal-backdrop-custom {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+    }
+
+    .modal-backdrop-custom.open {
+        display: flex;
+    }
+
+    .profile-picture-modal {
+        background: #fff;
+        border-radius: 1rem;
+        width: min(100%, 520px);
+        max-width: 520px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        padding: 1.5rem;
+        position: relative;
+    }
+
+    .profile-picture-modal h4 {
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+
+    .profile-picture-modal .preview-image {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(13, 110, 253, 0.15);
+        margin-bottom: 1rem;
+    }
+
+    .profile-picture-modal .modal-error {
+        color: #d63384;
+        margin-top: 0.5rem;
+        min-height: 1.4em;
+    }
+
+    .profile-picture-modal .modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+</style>
+
+<div id="profile-picture-modal-backdrop" class="modal-backdrop-custom" aria-hidden="true">
+    <div class="profile-picture-modal" role="dialog" aria-modal="true" aria-labelledby="profile-picture-modal-title">
+        <h4 id="profile-picture-modal-title">Update Profile Picture</h4>
+        <div class="text-center">
+            <img id="profile-picture-modal-preview" class="preview-image" src="{% if student_profile.profile_picture %}{{ student_profile.profile_picture.url }}{% else %}{% static 'calc/img/default-avatar.svg' %}{% endif %}" alt="Current profile picture preview">
+        </div>
+        <form id="profile-picture-modal-form">
+            <div class="mb-3">
+                <label for="modal_profile_picture" class="form-label">Select a new image</label>
+                <input type="file" class="form-control" id="modal_profile_picture" name="profile_picture" accept="image/jpeg,image/png">
+                <div id="profile-picture-modal-error" class="modal-error"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="profile-picture-modal-cancel" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="profile-picture-modal-save" class="btn btn-primary" disabled>Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="container py-5">
 
     <div class="card shadow-sm border-0">
@@ -30,17 +112,28 @@ Dashboard
 
                 <div class="row g-3 mb-3">
                     <div class="col-md-3 text-center">
-                        {% if student_profile.profile_picture %}
-                            <img src="{{ student_profile.profile_picture.url }}"
-                                alt="Profile Picture"
-                                class="img-fluid rounded-circle"
-                                style="max-width: 140px;">
-                        {% else %}
-                            <img src="{% static 'calc/img/default-avatar.svg' %}"
-                                alt="Profile Picture"
-                                class="img-fluid rounded-circle"
-                                style="max-width: 140px;">
-                        {% endif %}
+                        <button type="button"
+                                id="open-profile-picture-modal"
+                                class="profile-picture-link d-inline-block open-profile-picture-modal"
+                                title="Change profile picture">
+                            {% if student_profile.profile_picture %}
+                                <img src="{{ student_profile.profile_picture.url }}"
+                                    alt="Profile Picture"
+                                    class="img-fluid rounded-circle"
+                                    style="max-width: 140px;">
+                            {% else %}
+                                <img src="{% static 'calc/img/default-avatar.svg' %}"
+                                    alt="Profile Picture"
+                                    class="img-fluid rounded-circle"
+                                    style="max-width: 140px;">
+                            {% endif %}
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-primary mt-3 open-profile-picture-modal"
+                                title="Change profile picture">
+                            Change profile picture
+                        </button>
                     </div>
                     <div class="col-md-9">
                         <table class="table table-bordered">
@@ -156,6 +249,147 @@ function updateDashboardStatus() {
 
 updateDashboardStatus();
 setInterval(updateDashboardStatus, 3000);
+</script>
+
+<script>
+(function() {
+    const modalTriggers = document.querySelectorAll('.open-profile-picture-modal');
+    const backdrop = document.getElementById('profile-picture-modal-backdrop');
+    const cancelButton = document.getElementById('profile-picture-modal-cancel');
+    const saveButton = document.getElementById('profile-picture-modal-save');
+    const fileInput = document.getElementById('modal_profile_picture');
+    const previewImage = document.getElementById('profile-picture-modal-preview');
+    const errorContainer = document.getElementById('profile-picture-modal-error');
+    const dashboardImage = document.querySelector('.profile-picture-link img');
+    const uploadUrl = '{% url "update_profile_picture" %}';
+    const maxFileSize = 2 * 1024 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/png'];
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+    }
+
+    function openModal() {
+        backdrop.classList.add('open');
+        backdrop.setAttribute('aria-hidden', 'false');
+        errorContainer.textContent = '';
+        saveButton.disabled = true;
+        saveButton.textContent = 'Save';
+        fileInput.value = '';
+        previewImage.src = dashboardImage.src;
+        fileInput.focus();
+    }
+
+    function closeModal() {
+        backdrop.classList.remove('open');
+        backdrop.setAttribute('aria-hidden', 'true');
+        errorContainer.textContent = '';
+        saveButton.disabled = true;
+        fileInput.value = '';
+        previewImage.src = dashboardImage.src;
+    }
+
+    function validateFile(file) {
+        if (!file) {
+            return 'Please select a file.';
+        }
+        if (!allowedTypes.includes(file.type)) {
+            return 'Only JPG and PNG images are allowed.';
+        }
+        if (file.size > maxFileSize) {
+            return 'File size must be under 2MB.';
+        }
+        return '';
+    }
+
+    function handleFileChange() {
+        const file = fileInput.files[0];
+        const error = validateFile(file);
+        errorContainer.textContent = error;
+        saveButton.disabled = !!error;
+
+        if (file && !error) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewImage.src = dashboardImage.src;
+        }
+    }
+
+    function parseServerErrors(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const errorEls = doc.querySelectorAll('.text-danger, .modal-error');
+        if (errorEls.length) {
+            return Array.from(errorEls).map(el => el.textContent.trim()).filter(Boolean).join(' ');
+        }
+        return 'Unable to upload image. Please try again.';
+    }
+
+    async function submitForm() {
+        const file = fileInput.files[0];
+        const validationError = validateFile(file);
+        if (validationError) {
+            errorContainer.textContent = validationError;
+            saveButton.disabled = true;
+            return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
+        errorContainer.textContent = '';
+
+        const formData = new FormData();
+        formData.append('profile_picture', file);
+
+        try {
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                redirect: 'follow'
+            });
+
+            if (response.redirected) {
+                dashboardImage.src = previewImage.src;
+                closeModal();
+            } else {
+                const text = await response.text();
+                errorContainer.textContent = parseServerErrors(text);
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save';
+            }
+        } catch (err) {
+            errorContainer.textContent = 'Upload failed. Please try again.';
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save';
+        }
+    }
+
+    modalTriggers.forEach(trigger => trigger.addEventListener('click', openModal));
+    cancelButton.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) {
+            closeModal();
+        }
+    });
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && backdrop.classList.contains('open')) {
+            closeModal();
+        }
+    });
+    fileInput.addEventListener('change', handleFileChange);
+    saveButton.addEventListener('click', submitForm);
+})();
 </script>
 
 {% endblock %}
