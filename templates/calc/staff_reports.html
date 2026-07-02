@@ -36,6 +36,16 @@ Reports
                 <td>{{ skipped }}</td>
             </tr>
 
+            <tr>
+                <th>Average Waiting Time</th>
+                <td>{{ avg_wait_minutes|default:'N/A' }} minutes</td>
+            </tr>
+
+            <tr>
+                <th>Average Serving Time</th>
+                <td>{{ avg_service_minutes|default:'N/A' }} minutes</td>
+            </tr>
+
         </table>
 
         <!-- PDF EXPORT BUTTON -->

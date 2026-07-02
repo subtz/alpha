@@ -63,12 +63,46 @@ class ProfilePictureForm(forms.ModelForm):
                 raise forms.ValidationError(
                     "Image file too large. Maximum size is 2MB."
                 )
-            allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
             if picture.content_type not in allowed_types:
                 raise forms.ValidationError(
                     "Unsupported file type. Please upload a JPEG, PNG, GIF or WebP image."
                 )
         return picture
+
+
+
+@login_required
+def profile_picture_upload(request):
+    student_profile = get_object_or_404(StudentProfile, user=request.user)
+    if request.method == 'POST':
+        form = ProfilePictureForm(request.POST, request.FILES, instance=student_profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile picture updated successfully!')
+            return redirect('dashboard')  # Redirect to a relevant page, e.g., dashboard or profile view
+        else:
+            messages.error(request, 'Error uploading profile picture. Please check the file type and size.')
+    else:
+        form = ProfilePictureForm(instance=student_profile)
+    return render(request, 'calc/profile_picture_upload.html', {'form': form})
+
+
+def service_worker(request):
+    sw_path = os.path.join(settings.BASE_DIR, 'calc', 'static', 'calc', 'service-worker.js')
+    try:
+        with open(sw_path, 'r', encoding='utf-8') as sw_file:
+            content = sw_file.read()
+    except FileNotFoundError:
+        content = '// Service worker file not found.'
+    return HttpResponse(content, content_type='application/javascript')
+
+
+def offline(request):
+    return HttpResponse(
+        '<h1>Offline</h1><p>The application is offline. Please reconnect to continue.</p>',
+        content_type='text/html'
+    )
 
 
 class StudentRegistrationForm(UserCreationForm):
@@ -390,6 +424,9 @@ def student_queue_status(request):
             'message': 'You are not currently in any queue.'
         })
 
+    process_auto_mode(entry.queue)
+    entry.refresh_from_db()
+
     waiting_entries = list(
         QueueEntry.objects.filter(
             queue=entry.queue,
@@ -403,7 +440,12 @@ def student_queue_status(request):
             position = idx
             break
 
-    tickets_ahead = (position - 1) if position else 0
+    if entry.status == 'serving':
+        position = 1
+        tickets_ahead = 0
+    else:
+        tickets_ahead = (position - 1) if position else 0
+
     avg_service_time = get_avg_service_time_minutes()
     eta_minutes = round(avg_service_time * tickets_ahead, 2)
 
@@ -702,6 +744,120 @@ def get_waiting_entries(queue):
     return waiting_entries
 
 
+def complete_queue_entry(entry, status='served', notification_message=None, now=None):
+    if not entry:
+        return None
+
+    now = now or timezone.now()
+    entry.status = status
+    entry.completed_at = now
+    entry.served_at = entry.served_at or now
+    entry.save()
+
+    if notification_message:
+        send_student_notification(
+            entry,
+            notification_message,
+            url=reverse("notifications")
+        )
+
+    return entry
+
+
+def serve_next_waiting(queue, now=None):
+    now = now or timezone.now()
+    next_entry = QueueEntry.objects.filter(
+        queue=queue,
+        status='waiting'
+    ).order_by('entered_at').first()
+
+    if not next_entry:
+        return None
+
+    next_entry.status = 'serving'
+    next_entry.served_at = now
+    next_entry.save()
+
+    send_student_notification(
+        next_entry,
+        "It's your turn! Please proceed to the service desk now.",
+        url=reverse("notifications")
+    )
+
+    return next_entry
+
+
+def notify_waiting_positions(queue):
+    waiting_entries = list(QueueEntry.objects.filter(
+        queue=queue, status='waiting'
+    ).order_by('entered_at'))
+
+    for idx, entry in enumerate(waiting_entries, start=1):
+        tickets_ahead = idx - 1
+        if tickets_ahead == 0:
+            send_student_notification(
+                entry,
+                "You are next in line! Get ready.",
+                url=reverse("notifications")
+            )
+        elif tickets_ahead == 2:
+            send_student_notification(
+                entry,
+                "Only 3 tickets ahead of you. Please be ready soon.",
+                url=reverse("notifications")
+            )
+
+
+def process_auto_mode(queue):
+    if not queue.is_auto_mode_enabled or queue.is_paused or queue.auto_serve_interval <= 0:
+        return
+
+    now = timezone.now()
+
+    with transaction.atomic():
+        queue_locked = Queue.objects.select_for_update().get(id=queue.id)
+
+        if queue_locked.is_paused or not queue_locked.is_auto_mode_enabled:
+            return
+
+        current = QueueEntry.objects.select_for_update().filter(
+            queue=queue_locked,
+            status='serving'
+        ).first()
+
+        waiting_entries = list(QueueEntry.objects.select_for_update().filter(
+            queue=queue_locked,
+            status='waiting'
+        ).order_by('entered_at'))
+
+        if not current:
+            if waiting_entries:
+                serve_next_waiting(queue_locked, now=now)
+                queue_locked.last_auto_served_at = now
+                queue_locked.save(update_fields=['last_auto_served_at'])
+                notify_waiting_positions(queue_locked)
+            return
+
+        if queue_locked.last_auto_served_at is None:
+            queue_locked.last_auto_served_at = now
+            queue_locked.save(update_fields=['last_auto_served_at'])
+            return
+
+        interval_delta = timedelta(minutes=queue_locked.auto_serve_interval)
+        if now >= queue_locked.last_auto_served_at + interval_delta:
+            complete_queue_entry(
+                current,
+                status='served',
+                notification_message="Your service in the queue has been completed. Thank you!",
+                now=now
+            )
+            if waiting_entries:
+                serve_next_waiting(queue_locked, now=now)
+            queue_locked.last_auto_served_at = now
+            queue_locked.save(update_fields=['last_auto_served_at'])
+            notify_waiting_positions(queue_locked)
+
+
 # ==================================================
 # ANALYTICS
 # ==================================================
@@ -847,6 +1003,9 @@ def get_notification_logs(request):
 @require_POST
 def queue_status_api(request, queue_id):
     queue = get_object_or_404(Queue, id=queue_id)
+    process_auto_mode(queue)
+    queue.refresh_from_db()
+
     current = QueueEntry.objects.filter(queue=queue, status='serving').first()
     waiting_entries = get_waiting_entries(queue)
 
@@ -952,22 +1111,34 @@ def advance_queue(queue_id):
 @staff_member_required
 def serve_current(request, queue_id):
     advance_queue(queue_id)
+    queue = Queue.objects.filter(id=queue_id).first()
+    if queue and queue.is_auto_mode_enabled:
+        queue.last_auto_served_at = timezone.now()
+        queue.save(update_fields=['last_auto_served_at'])
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
 @staff_member_required
 def skip_current(request, queue_id):
-    entry = QueueEntry.objects.filter(queue_id=queue_id, status='serving').first()
-    if entry:
-        entry.status = 'skipped'
-        entry.completed_at = timezone.now()
-        entry.save()
-        # Cancelled trigger
-        send_student_notification(
-            entry,
-            f"Your ticket {entry.ticket_number} has been cancelled/skipped.",
-            url=reverse("notifications")
-        )
+    with transaction.atomic():
+        queue = Queue.objects.select_for_update().filter(id=queue_id).first()
+        entry = QueueEntry.objects.select_for_update().filter(
+            queue_id=queue_id, status='serving'
+        ).first()
+        if entry:
+            entry.status = 'skipped'
+            entry.completed_at = timezone.now()
+            entry.save()
+            send_student_notification(
+                entry,
+                f"Your ticket {entry.ticket_number} has been skipped.",
+                url=reverse("notifications")
+            )
+            if queue and queue.is_auto_mode_enabled:
+                queue.last_auto_served_at = timezone.now()
+                queue.save(update_fields=['last_auto_served_at'])
+            serve_next_waiting(queue)
+            notify_waiting_positions(queue)
     return redirect('queue_control_dashboard', queue_id=queue_id)
 
 
@@ -1025,11 +1196,36 @@ def set_auto_interval(request, queue_id):
 @staff_member_required
 def staff_reports(request):
     today = timezone.localdate()
+    served_entries = QueueEntry.objects.filter(
+        status='served',
+        completed_at__date=today,
+        served_at__isnull=False,
+        entered_at__isnull=False
+    )
+
+    wait_expr = ExpressionWrapper(F('served_at') - F('entered_at'), output_field=DurationField())
+    service_expr = ExpressionWrapper(F('completed_at') - F('served_at'), output_field=DurationField())
+
+    aggs = served_entries.aggregate(
+        avg_wait=Avg(wait_expr),
+        avg_service=Avg(service_expr)
+    )
+
+    def minutes(td):
+        if not td:
+            return None
+        try:
+            return round(td.total_seconds() / 60.0, 2)
+        except Exception:
+            return None
+
     return render(request, 'calc/staff_reports.html', {
         'today': today,
-        'served_today': QueueEntry.objects.filter(status='served', completed_at__date=today).count(),
+        'served_today': served_entries.count(),
         'waiting': QueueEntry.objects.filter(status='waiting').count(),
-        'skipped': QueueEntry.objects.filter(status='skipped', completed_at__date=today).count()
+        'skipped': QueueEntry.objects.filter(status='skipped', completed_at__date=today).count(),
+        'avg_wait_minutes': minutes(aggs.get('avg_wait')),
+        'avg_service_minutes': minutes(aggs.get('avg_service')),
     })
 
 
@@ -1039,20 +1235,43 @@ def export_reports_pdf(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="report_{today}.pdf"'
 
-    doc = SimpleDocTemplate(response, pagesize=letter)
-    styles = getSampleStyleSheet()
+    served_entries = QueueEntry.objects.filter(
+        status='served',
+        completed_at__date=today,
+        served_at__isnull=False,
+        entered_at__isnull=False
+    )
+
+    wait_expr = ExpressionWrapper(F('served_at') - F('entered_at'), output_field=DurationField())
+    service_expr = ExpressionWrapper(F('completed_at') - F('served_at'), output_field=DurationField())
+
+    aggs = served_entries.aggregate(
+        avg_wait=Avg(wait_expr),
+        avg_service=Avg(service_expr)
+    )
+
+    def minutes(td):
+        if not td:
+            return 'N/A'
+        try:
+            return f"{round(td.total_seconds() / 60.0, 2)} min"
+        except Exception:
+            return 'N/A'
 
     data = [
         ['Metric', 'Value'],
         ['Date', str(today)],
         ['Waiting', QueueEntry.objects.filter(status='waiting').count()],
-        ['Served Today', QueueEntry.objects.filter(status='served', completed_at__date=today).count()],
-        ['Skipped', QueueEntry.objects.filter(status='skipped', completed_at__date=today).count()]
+        ['Served Today', served_entries.count()],
+        ['Skipped', QueueEntry.objects.filter(status='skipped', completed_at__date=today).count()],
+        ['Average Waiting Time', minutes(aggs.get('avg_wait'))],
+        ['Average Serving Time', minutes(aggs.get('avg_service'))]
     ]
 
     table = Table(data)
     table.setStyle(TableStyle([('GRID', (0, 0), (-1, -1), 1, colors.black)]))
 
+    doc = SimpleDocTemplate(response, pagesize=letter)
     doc.build([Paragraph("Queue Report", styles['Title']), Spacer(1, 20), table])
     return response
 

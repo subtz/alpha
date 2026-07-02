@@ -1,0 +1,112 @@
+{% extends 'calc/base.html' %}
+{% load static %}
+
+{% block title %}
+SQMS | Upload Profile Picture
+{% endblock %}
+
+{% block head %}
+<style>
+    .profile-picture-container {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .profile-picture-preview {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid var(--accent-color);
+        box-shadow: var(--box-shadow-md);
+        margin-bottom: 15px;
+    }
+    .card-header {
+        background-color: var(--primary-color);
+        color: #ffffff;
+        font-weight: 600;
+        border-bottom: 1px solid var(--accent-color);
+        border-top-left-radius: var(--border-radius-md);
+        border-top-right-radius: var(--border-radius-md);
+        padding: 1rem 1.5rem;
+    }
+    .btn-upload {
+        background-color: var(--success-color) !important;
+        border-color: var(--success-color) !important;
+    }
+    .btn-upload:hover {
+        background-color: #0d5c56 !important;
+        border-color: #0d5c56 !important;
+    }
+    .form-label {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card mt-4">
+            <div class="card-header">
+                <h2 class="card-title mb-0" style="color: #ffffff;">Manage Profile Picture</h2>
+            </div>
+            <div class="card-body p-4">
+                <div class="profile-picture-container">
+                    <img id="profile-picture-preview"
+                         src="{% if student_profile.profile_picture %}{{ student_profile.profile_picture.url }}{% else %}{% static 'calc/img/default-avatar.svg' %}{% endif %}"
+                         alt="Profile Picture"
+                         class="profile-picture-preview">
+                    {% if student_profile.profile_picture %}
+                        <p class="text-muted">Current Profile Picture</p>
+                    {% else %}
+                        <p class="text-muted">No Profile Picture Uploaded</p>
+                    {% endif %}
+                </div>
+
+                <form method="POST"
+                      enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_profile_picture"
+                               class="form-label">Select new profile picture:</label>
+                        <input type="file"
+                               class="form-control"
+                               id="id_profile_picture"
+                               name="profile_picture"
+                               accept="image/jpeg,image/png,image/webp">
+                        {% if form.profile_picture.errors %}
+                            {% for error in form.profile_picture.errors %}
+                                <p class="text-danger mt-2">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit"
+                                class="btn btn-primary btn-upload">
+                            {% if student_profile.profile_picture %}
+                                Change Profile Picture
+                            {% else %}
+                                Upload Profile Picture
+                            {% endif %}
+                        </button>
+                        <a href="{% url 'dashboard' %}"
+                           class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('id_profile_picture').addEventListener('change', function(event) {
+        const [file] = event.target.files;
+        if (file) {
+            document.getElementById('profile-picture-preview').src = URL.createObjectURL(file);
+        }
+    });
+</script>
+{% endblock %}

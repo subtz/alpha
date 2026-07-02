@@ -707,44 +707,63 @@ splash.remove();
 
 if ('serviceWorker' in navigator) {
 
-window.addEventListener('load', function() {
-
-navigator.serviceWorker.register(
-'{% static "calc/service-worker.js" %}'
-)
-
-.then(function(registration) {
-
-console.log(
-'Service Worker registered:',
-registration.scope
-);
-
-})
-
-.catch(function(error) {
-
-        console.warn(
-          'Service Worker registration failed:',
-          error
-        );
-
-      });
-
-    });
-
+  async function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
   }
 
-  // Push Notification Subscription logic
+  async function registerServiceWorker() {
+    const existingRegistration = await navigator.serviceWorker.getRegistration();
+    if (existingRegistration) {
+      console.log('Service Worker already registered:', existingRegistration.scope);
+      return existingRegistration;
+    }
+
+    return navigator.serviceWorker.register('{% static "calc/service-worker.js" %}')
+      .then(function (registration) {
+        console.log('Service Worker registered:', registration.scope);
+        return registration;
+      })
+      .catch(function (error) {
+        console.warn('Service Worker registration failed:', error);
+        return null;
+      });
+  }
+
   async function subscribeUser() {
-    if (!('serviceWorker' in navigator)) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       return;
     }
 
-    const registration = await navigator.serviceWorker.ready;
-    const vapidPublicKey = window.VAPID_PUBLIC_KEY;
-    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+    const registration = await registerServiceWorker();
+    if (!registration) {
+      return;
+    }
 
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('Existing push subscription found.');
+      await sendSubscriptionToBackEnd(existingSubscription);
+      return existingSubscription;
+    }
+
+    const vapidPublicKey = window.VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+      console.warn('VAPID public key is not available.');
+      return;
+    }
+
+    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: convertedVapidKey,
@@ -752,6 +771,7 @@ registration.scope
 
     console.log('Push Subscription:', subscription);
     await sendSubscriptionToBackEnd(subscription);
+    return subscription;
   }
 
   function urlBase64ToUint8Array(base64String) {
@@ -770,7 +790,11 @@ registration.scope
   }
 
   async function sendSubscriptionToBackEnd(subscription) {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const csrfToken = await getCookie('csrftoken');
+    if (!csrfToken) {
+      console.error('CSRF token not found.');
+      return;
+    }
 
     return fetch('{% url "push_subscribe" %}', {
       method: 'POST',
@@ -793,8 +817,7 @@ registration.scope
     });
   }
 
-  // Request permission and subscribe on user action (e.g., button click, or page load if appropriate)
-  // For now, let's try to subscribe right away if permission is granted.
+  {% if user.is_authenticated %}
   if ('Notification' in window && 'serviceWorker' in navigator) {
     Notification.requestPermission().then(function(permission) {
       if (permission === 'granted') {
@@ -802,7 +825,9 @@ registration.scope
       }
     });
   }
+{% endif %}
 
+}
 </script>
 
 </body>

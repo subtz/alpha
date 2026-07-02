@@ -85,6 +85,12 @@ urlpatterns = [
     path('queues/join/<int:queue_id>/', views.join_queue, name='join_queue'),
 
     path(
+        'profile/picture/upload/',
+        views.profile_picture_upload,
+        name='profile_picture_upload'
+    ),
+
+    path(
         'profile/picture/update/',
         views.update_profile_picture,
         name='update_profile_picture'
