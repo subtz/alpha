@@ -63,10 +63,10 @@ class ProfilePictureForm(forms.ModelForm):
                 raise forms.ValidationError(
                     "Image file too large. Maximum size is 2MB."
                 )
-            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+            allowed_types = ['image/jpeg', 'image/png']
             if picture.content_type not in allowed_types:
                 raise forms.ValidationError(
-                    "Unsupported file type. Please upload a JPEG, PNG, GIF or WebP image."
+                    "Unsupported file type. Please upload a JPEG or PNG image."
                 )
         return picture
 
@@ -85,7 +85,28 @@ def profile_picture_upload(request):
             messages.error(request, 'Error uploading profile picture. Please check the file type and size.')
     else:
         form = ProfilePictureForm(instance=student_profile)
-    return render(request, 'calc/profile_picture_upload.html', {'form': form})
+
+    return render(request, 'calc/profile_picture_upload.html', {
+        'form': form,
+        'student_profile': student_profile
+    })
+
+
+@login_required
+@require_POST
+def update_profile_picture(request):
+    student_profile = get_object_or_404(StudentProfile, user=request.user)
+    form = ProfilePictureForm(request.POST, request.FILES, instance=student_profile)
+    if form.is_valid():
+        form.save()
+        messages.success(request, 'Profile picture updated successfully!')
+        return redirect('dashboard')
+
+    messages.error(request, 'Error updating profile picture. Please check the file type and size.')
+    return render(request, 'calc/profile_picture_upload.html', {
+        'form': form,
+        'student_profile': student_profile
+    })
 
 
 def service_worker(request):
@@ -345,51 +366,6 @@ def resend_confirmation(request):
     return render(request, 'calc/resend_confirmation.html')
 
 
-# ==================================================
-# PROFILE PICTURE
-# ==================================================
-@login_required
-def update_profile_picture(request):
-    profile = get_object_or_404(StudentProfile, user=request.user)
-
-    if request.method == 'POST':
-        form = ProfilePictureForm(
-            request.POST,
-            request.FILES,
-            instance=profile
-        )
-        if form.is_valid():
-            if profile.profile_picture:
-                try:
-                    old_path = profile.profile_picture.path
-                    if os.path.isfile(old_path):
-                        os.remove(old_path)
-                except Exception:
-                    pass
-
-            form.save()
-
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'picture_url': profile.profile_picture.url
-                })
-
-            return redirect('dashboard')
-
-        else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'errors': form.errors
-                }, status=400)
-
-    return redirect('dashboard')
-
-
-# ==================================================
-# BASIC PAGES
-# ==================================================
 def home(request):
     try:
         return render(request, 'calc/home.html')
@@ -525,21 +501,22 @@ def join_queue(request, queue_id):
     ).first()
 
     if existing:
-        pos_in_queue = 1
+        queue_position = 1
         if existing.status == 'waiting':
-            waiting_entries = list(QueueEntry.objects.filter(
-                queue=queue, status='waiting'
-            ).order_by('entered_at'))
+            waiting_entries = get_waiting_entries(queue)
+            queue_position = 1
             for idx, entry in enumerate(waiting_entries, start=1):
                 if entry.id == existing.id:
-                    pos_in_queue = idx
+                    queue_position = idx
                     break
         avg_service_time = get_avg_service_time_minutes()
-        existing_eta = round(avg_service_time * (pos_in_queue - 1), 2)
+        existing_eta = round(avg_service_time * (queue_position - 1), 2)
         return render(request, 'calc/queue_join_success.html', {
             'entry': existing,
             'queue': queue,
-            'position': existing.position,
+            'ticket_number': existing.ticket_number,
+            'queue_position': queue_position,
+            'position': queue_position,
             'eta_minutes': existing_eta,
             'message': 'Already joined.'
         })
@@ -591,8 +568,15 @@ def join_queue(request, queue_id):
             )
 
     avg_service_time = get_avg_service_time_minutes()
-    waiting_count = QueueEntry.objects.filter(queue=queue, status='waiting').count()
-    eta_minutes = round(avg_service_time * (waiting_count - 1), 2)
+    waiting_entries = get_waiting_entries(queue)
+    queue_position = 1
+    for idx, waiting_entry in enumerate(waiting_entries, start=1):
+        if waiting_entry.id == entry.id:
+            queue_position = idx
+            break
+
+    waiting_count = len(waiting_entries)
+    eta_minutes = round(avg_service_time * (queue_position - 1), 2)
 
     # Join queue notification (deep linked to notifications page)
     send_student_notification(
@@ -611,7 +595,9 @@ def join_queue(request, queue_id):
     return render(request, 'calc/queue_join_success.html', {
         'entry': entry,
         'queue': queue,
-        'position': entry.position,
+        'ticket_number': entry.ticket_number,
+        'queue_position': queue_position,
+        'position': queue_position,
         'eta_minutes': eta_minutes
     })
 

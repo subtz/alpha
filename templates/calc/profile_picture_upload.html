@@ -53,13 +53,17 @@ SQMS | Upload Profile Picture
             </div>
             <div class="card-body p-4">
                 <div class="profile-picture-container">
-                    <img id="profile-picture-preview"
-                         src="{% if student_profile.profile_picture %}{{ student_profile.profile_picture.url }}{% else %}{% static 'calc/img/default-avatar.svg' %}{% endif %}"
-                         alt="Profile Picture"
-                         class="profile-picture-preview">
                     {% if student_profile.profile_picture %}
+                        <img id="profile-picture-preview"
+                             src="{{ student_profile.profile_picture.url }}"
+                             alt="Profile Picture"
+                             class="profile-picture-preview">
                         <p class="text-muted">Current Profile Picture</p>
                     {% else %}
+                        <img id="profile-picture-preview"
+                             src="{% static 'calc/img/default-avatar.svg' %}"
+                             alt="Profile Picture"
+                             class="profile-picture-preview">
                         <p class="text-muted">No Profile Picture Uploaded</p>
                     {% endif %}
                 </div>
