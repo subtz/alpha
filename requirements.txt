@@ -14,6 +14,8 @@ sqlparse==0.5.3
 typing_extensions==4.13.2
 tzdata==2025.2
 whitenoise==6.9.0
+cloudinary
+django-cloudinary-storage
 requests==2.34.2
 pywebpush==2.0.3
 py-vapid==1.9.2
