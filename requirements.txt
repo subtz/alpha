@@ -20,3 +20,5 @@ requests==2.34.2
 pywebpush==2.0.3
 py-vapid==1.9.2
 cryptography
+sendgrid==6.12.5
+django-sendgrid-v5==1.3.1
