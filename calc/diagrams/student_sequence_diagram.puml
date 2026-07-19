@@ -1,0 +1,109 @@
+@startuml student_sequence.puml
+/' student_sequence.puml '/
+autonumber
+actor Student
+participant "SQMS Client View\n(HTML/JS)" as Client
+participant "Django App Server\n(views.py)" as App
+database Database as DB
+participant "SMTP Mail Server" as SMTP
+participant "WebPush Service\n(pywebpush)" as Push
+
+== 1. Account Creation & Verification ==
+Student -> Client: Enter Register Form
+Client -> App: POST /register/\n(username, email, registration_number, password)
+activate App
+App -> DB: User.objects.filter(email=email).exists()
+DB --> App: Boolean
+App -> DB: ValidStudent.objects.filter(registration_number=reg_no, is_active=True).first()
+DB --> App: ValidStudent Row / None
+App -> DB: StudentProfile.objects.filter(valid_student=student).exists()
+DB --> App: Boolean
+
+alt validation passes
+    App -> DB: Save inactive User (is_active=False) & StudentProfile
+    DB --> App: Success
+    App -> SMTP: send_mail(verify_url)
+    SMTP --> App: Success
+    App --> Client: Render verify_email_sent.html
+else form errors / email or reg invalid
+    App --> Client: Render register.html with form.errors
+end
+deactivate App
+
+Student -> App: GET /verify-email/<uidb64>/<token>/
+activate App
+App -> DB: User.objects.get(pk=uid)
+DB --> App: User Instance
+App -> App: verify default_token_generator
+alt token is valid
+    App -> DB: Set User.is_active = True
+    DB --> App: Success
+    App -> SMTP: send_security_email(user, 'activated')
+    SMTP --> App: Success
+    App --> Client: Render email_verified.html
+else token expired/invalid
+    App --> Client: Render email_expired.html (HTTP 400)
+end
+deactivate App
+
+== 2. Queue Enrollment ==
+Student -> Client: Click Join Queue Button
+Client -> App: GET /queues/join/<queue_id>/
+activate App
+App -> DB: Queue.objects.get(id=queue_id)
+DB --> App: Queue Instance
+App -> DB: StudentProfile.objects.get(user=request.user)
+DB --> App: StudentProfile Instance
+
+alt queue.is_paused is True
+    App --> Client: HttpResponse("Queue is paused")
+else profile.valid_student.year_of_study not in queue.allowed_years
+    App --> Client: HttpResponse("You are not allowed to join this queue.")
+else checks passed
+    App -> DB: QueueEntry.objects.filter(customer__email, queue, status in [waiting, serving]).first()
+    DB --> App: QueueEntry Row / None
+    
+    alt already has active ticket (existing)
+        App -> DB: get_waiting_entries(queue) & get_avg_service_time_minutes()
+        DB --> App: wait_list, avg_minutes
+        App --> Client: Render queue_join_success.html ("Already joined")
+    else no active ticket
+        App -> DB: Customer.objects.get_or_create(email, defaults={name})
+        DB --> App: Customer Instance
+        App -> DB: QueueEntry.objects.filter(queue, status in [waiting, serving]).count()
+        DB --> App: current_count
+        
+        alt current_count >= queue.max_capacity
+            App --> Client: HttpResponse("Queue is full")
+        else capacity OK
+            App -> DB: Service.objects.filter(is_active=True).first()
+            DB --> App: Service Row / None
+            alt no active service available
+                App --> Client: HttpResponse("No active service available.")
+            else service OK
+                group Transaction Block [atomic]
+                    App -> DB: Queue.objects.select_for_update().get(id=queue.id)
+                    DB --> App: Locked Queue Row
+                    App -> DB: Increment & save current_ticket_number
+                    DB --> App: Success
+                    App -> DB: QueueEntry.objects.create(position, ticket_number, status='waiting')
+                    DB --> App: QueueEntry Row
+                end
+                
+                App -> DB: get_waiting_entries(queue) & get_avg_service_time_minutes()
+                DB --> App: wait_list, avg_minutes
+                
+                App -> DB: PushSubscription.objects.filter(user)
+                DB --> App: Subscriptions
+                App -> Push: webpush(subscription, payload)
+                Push --> App: WebPush Response (Status)
+                App -> DB: NotificationLog.objects.create(success_status)
+                DB --> App: Success
+                
+                App --> Client: Render queue_join_success.html (New ticket generated)
+            end
+        end
+    end
+end
+deactivate App
+@enduml

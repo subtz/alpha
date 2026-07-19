@@ -1,0 +1,112 @@
+@startuml staff_sequence.puml
+/' staff_sequence.puml '/
+autonumber
+actor Staff
+participant "Staff Control View\n(admin_queue_dashboard.html)" as Client
+participant "Django App Server\n(views.py)" as App
+database Database as DB
+participant "WebPush Service\n(pywebpush)" as Push
+
+== 1. Serve Current Student ==
+Staff -> Client: Click "Serve Next"
+Client -> App: GET /staff/serve/<queue_id>/
+activate App
+App -> App: advance_queue(queue_id)
+activate App #darkgray
+
+App -> DB: QueueEntry.objects.filter(queue_id, status='serving').first()
+DB --> App: current_entry Row / None
+alt current serving entry exists
+    App -> DB: Update current_entry (status='served', completed_at=now)
+    DB --> App: Success
+    App -> App: send_student_notification(current_entry)
+    activate App #lightgray
+    App -> DB: PushSubscription.objects.filter(user)
+    DB --> App: Subscriptions
+    App -> Push: Send webpush message (Completed Service)
+    Push --> App: Send Status
+    App -> DB: NotificationLog.objects.create()
+    DB --> App: Success
+    deactivate App
+end
+
+App -> DB: QueueEntry.objects.filter(queue_id, status='waiting').order_by('entered_at').first()
+DB --> App: next_entry Row / None
+alt next waiting entry exists
+    App -> DB: Update next_entry (status='serving', served_at=now)
+    DB --> App: Success
+    App -> App: send_student_notification(next_entry)
+    activate App #lightgray
+    App -> DB: PushSubscription.objects.filter(user)
+    DB --> App: Subscriptions
+    App -> Push: Send webpush message (Your turn!)
+    Push --> App: Send Status
+    App -> DB: NotificationLog.objects.create()
+    DB --> App: Success
+    deactivate App
+end
+
+App -> DB: QueueEntry.objects.filter(queue_id, status='waiting').order_by('entered_at')
+DB --> App: waiting_list RowSet
+loop for each entry index
+    alt tickets_ahead == 0 (Index 1)
+        App -> App: send_student_notification("You are next in line!")
+    else tickets_ahead == 2 (Index 3)
+        App -> App: send_student_notification("Only 3 tickets ahead...")
+    end
+end
+deactivate App
+
+App -> DB: Queue.objects.filter(id=queue_id).first()
+DB --> App: Queue Row / None
+alt queue exists and queue.is_auto_mode_enabled is True
+    App -> DB: Save queue.last_auto_served_at = now
+    DB --> App: Success
+end
+
+App --> Client: Redirect to queue_control_dashboard
+deactivate App
+
+== 2. Skip Current Student ==
+Staff -> Client: Click "Skip Student"
+Client -> App: GET /staff/skip/<queue_id>/
+activate App
+group Transaction Block [atomic]
+    App -> DB: Queue.objects.select_for_update().filter(id=queue_id).first()
+    DB --> App: Locked Queue Row
+    App -> DB: QueueEntry.objects.select_for_update().filter(queue_id, status='serving').first()
+    DB --> App: Locked serving Entry
+    
+    alt serving Entry exists
+        App -> DB: Update entry (status='skipped', completed_at=now)
+        DB --> App: Success
+        App -> App: send_student_notification(entry, "skipped")
+        
+        alt queue.is_auto_mode_enabled is True
+            App -> DB: Save queue.last_auto_served_at = now
+            DB --> App: Success
+        end
+        
+        App -> App: serve_next_waiting(queue)
+        activate App #lightgray
+        App -> DB: QueueEntry.objects.filter(queue, status='waiting').order_by('entered_at').first()
+        DB --> App: waiting_entry Row / None
+        alt waiting_entry exists
+            App -> DB: Update waiting_entry (status='serving', served_at=now)
+            DB --> App: Success
+            App -> App: send_student_notification("It's your turn!")
+        end
+        deactivate App
+        
+        App -> App: notify_waiting_positions(queue)
+        activate App #lightgray
+        App -> DB: QueueEntry.objects.filter(queue, status='waiting').order_by('entered_at')
+        DB --> App: remaining_list RowSet
+        ' loops through remaining_list to notify tickets_ahead == 0 or == 2
+        deactivate App
+    end
+end
+
+App --> Client: Redirect to queue_control_dashboard
+deactivate App
+@enduml

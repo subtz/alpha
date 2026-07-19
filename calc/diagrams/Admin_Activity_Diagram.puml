@@ -1,0 +1,83 @@
+@startuml
+start
+
+partition "Toggle Auto Mode Action" {
+  :Admin POST requests auto mode toggle;
+  :Fetch Queue object;
+  if (Is auto_mode_enabled == False AND queue.auto_serve_interval <= 0?) then (yes)
+    if (Is request AJAX?) then (yes)
+      :Return JsonResponse with error 'auto_interval_required' (HTTP 400);
+      stop
+    else (no)
+      :Redirect to queue_control_dashboard;
+      stop
+    endif
+  else (no)
+    :Toggle is_auto_mode_enabled state;
+    if (is_auto_mode_enabled is now True?) then (yes)
+      :Set queue.last_auto_served_at = now;
+    else (no)
+    endif
+    :Save queue;
+    if (Is request AJAX?) then (yes)
+      :Return JsonResponse with updated state;
+      stop
+    else (no)
+      :Redirect to queue_control_dashboard;
+      stop
+    endif
+  endif
+}
+
+partition "Set Auto Interval Action" {
+  :Admin POST requests interval modification;
+  :Fetch Queue object;
+  :Read auto_serve_interval value and cast to integer;
+  note right: TypeError/ValueError silently ignored (pass)
+  if (Interval value > 0?) then (yes)
+    :Update queue.auto_serve_interval;
+    if (queue.is_auto_mode_enabled == True?) then (yes)
+      :Set queue.last_auto_served_at = now;
+    else (no)
+    endif
+    :Save queue;
+  else (no)
+  endif
+  :Redirect to queue_control_dashboard;
+}
+
+partition "Query Audit Push Notification Logs" {
+  :Receive HTTP GET request with parameters;
+  :Initialize QuerySet of all NotificationLog records;
+
+  if (student_name parameter exists?) then (yes)
+    :Filter QuerySet by user__username__icontains=student_name;
+  else (no)
+  endif
+
+  if (status parameter is 'success' or 'failure'?) then (yes)
+    :Filter QuerySet by success status (True/False);
+  else (no)
+  endif
+
+  if (start_date parameter exists?) then (yes)
+    :Parse start_date string to Date object;
+    :Filter QuerySet by timestamp__date__gte=start_date;
+  else (no)
+  endif
+
+  if (end_date parameter exists?) then (yes)
+    :Parse end_date string to Date object;
+    :Filter QuerySet by timestamp__date__lte=end_date;
+  else (no)
+  endif
+
+  :Count total matching notifications;
+  :Count successful matching notifications;
+  :Instantiate Django Paginator (20 logs per page);
+  :Fetch requested page of records;
+  :Serialize records (timestamp, student, email, message, status, error);
+  :Return JsonResponse containing paginated logs, page bounds, and aggregate metrics;
+}
+stop
+@enduml

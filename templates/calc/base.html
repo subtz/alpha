@@ -547,9 +547,14 @@ Dashboard
 </li>
 
 <li class="nav-item me-2">
-<a class="btn btn-outline-secondary btn-sm"
+<a class="btn btn-outline-secondary btn-sm position-relative"
    href="{% url 'notifications' %}">
 Notifications
+{% if unread_notifications_count > 0 %}
+<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+  {{ unread_notifications_count }}
+</span>
+{% endif %}
 </a>
 </li>
 

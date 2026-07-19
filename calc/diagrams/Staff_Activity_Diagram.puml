@@ -1,0 +1,92 @@
+@startuml staff_activity.puml
+/' staff_activity.puml '/
+start
+
+partition "Serve Current Student (advance_queue)" {
+  :Staff requests serve_current;
+  :Fetch QueueEntry status='serving' (current);
+  if (Does current entry exist?) then (yes)
+    :Update current entry status='served';
+    :Set completed_at = now;
+    :Save entry;
+    :Send push notification of service completed;
+  else (no)
+  endif
+  
+  :Fetch first status='waiting' ordered by entered_at (next);
+  if (Does next entry exist?) then (yes)
+    :Update next entry status='serving';
+    :Set served_at = now;
+    :Save entry;
+    :Send push notification ("Proceed to desk");
+  else (no)
+  endif
+  
+  :Fetch list of remaining status='waiting' entries ordered by entered_at;
+  while (For each entry in waiting list) is (has entry)
+    :Calculate tickets_ahead = position_index - 1;
+    if (tickets_ahead == 0) then (yes)
+      :Send push notification ("You are next in line!");
+    elseif (tickets_ahead == 2) then (yes)
+      :Send push notification ("Only 3 tickets ahead...");
+    else (no)
+    endif
+  endwhile (list parsed)
+  
+  :Fetch parent Queue model;
+  if (Queue has auto_mode_enabled == True?) then (yes)
+    :Update queue.last_auto_served_at = now;
+    :Save queue row;
+  else (no)
+  endif
+  
+  :Redirect to queue_control_dashboard;
+}
+
+partition "Skip Current Student" {
+  :Staff requests skip_current;
+  partition "Database Transaction [Atomic]" {
+    :Lock parent Queue Row via select_for_update();
+    :Lock status='serving' QueueEntry Row via select_for_update();
+    
+    if (Serving entry exists?) then (yes)
+      :Update entry status='skipped';
+      :Set completed_at = now;
+      :Save entry;
+      :Send push notification ("Your ticket has been skipped");
+      
+      if (Queue exists and auto_mode_enabled == True?) then (yes)
+        :Update queue.last_auto_served_at = now;
+        :Save queue row;
+      else (no)
+      endif
+      
+      partition "serve_next_waiting helper" {
+        :Fetch first waiting QueueEntry in queue;
+        if (waiting entry exists?) then (yes)
+          :Set status='serving';
+          :Set served_at = now;
+          :Save entry;
+          :Send push notification ("Please proceed to service desk");
+        else (no)
+        endif
+      }
+      
+      partition "notify_waiting_positions helper" {
+        :Fetch waiting entries list;
+        while (For each waiting entry) is (has entry)
+          if (tickets_ahead == 0) then (yes)
+            :Send notification ("You are next!");
+          elseif (tickets_ahead == 2) then (yes)
+            :Send notification ("3 tickets ahead...");
+          else (no)
+          endif
+        endwhile (end list)
+      }
+    else (no)
+    endif
+  }
+  :Redirect to queue_control_dashboard;
+}
+stop
+@enduml

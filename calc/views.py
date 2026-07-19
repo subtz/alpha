@@ -458,6 +458,9 @@ def student_queue_status(request):
 
 @login_required
 def notifications_page(request):
+    # Mark user's notification logs as read when they visit notifications/status page
+    NotificationLog.objects.filter(user=request.user, is_read=False).update(is_read=True)
+
     entry = QueueEntry.objects.filter(
         customer__email=request.user.email,
         status__in=['waiting', 'serving']

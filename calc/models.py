@@ -339,6 +339,7 @@ class NotificationLog(models.Model):
     success = models.BooleanField(default=False)
     error = models.TextField(blank=True, default='')
     timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Notification Log"

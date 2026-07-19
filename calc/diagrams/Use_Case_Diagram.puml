@@ -1,0 +1,75 @@
+@startuml use_case_diagram.puml
+/' use_case_diagram.puml '/
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Student" as student
+actor "Staff Member" as staff
+actor "Admin" as admin
+
+rectangle "Student Queue Management System (SQMS)" {
+  ' Auth / Home Actions
+  usecase "Register Account\n(register)" as UC_register
+  usecase "Verify Email\n(verify_email)" as UC_verify_email
+  usecase "Resend Confirmation\n(resend_confirmation)" as UC_resend_confirm
+  usecase "Student Dashboard\n(dashboard)" as UC_dashboard
+  
+  ' Queue Student Actions
+  usecase "View Allowed Queues\n(queue_list)" as UC_queue_list
+  usecase "Join Active Queue\n(join_queue)" as UC_join_queue
+  usecase "Check Ticket Status API\n(student_queue_status)" as UC_student_status
+  usecase "View Notifications Page\n(notifications)" as UC_notifications
+  usecase "Upload/Update Profile Picture\n(profile_picture_upload / update_profile_picture)" as UC_profile_pic
+  usecase "Subscribe to Push Notifications\n(push_subscribe)" as UC_push_sub
+  usecase "View Queue Live Display Screen\n(queue_display)" as UC_display
+
+  ' Staff Control Actions
+  usecase "View Staff Dashboard Home\n(staff_dashboard_home)" as UC_staff_home
+  usecase "Access Queue Control Dashboard\n(queue_control_dashboard)" as UC_control_dash
+  usecase "Get Live Queue Status API\n(queue_status_api)" as UC_queue_status_api
+  usecase "Serve Current Student\n(serve_current)" as UC_serve
+  usecase "Skip Current Student\n(skip_current)" as UC_skip
+  usecase "Pause / Resume Queue\n(toggle_queue_pause)" as UC_pause
+
+  ' Admin Configurations / Analytics
+  usecase "Toggle Auto-Serve Mode\n(toggle_auto_mode)" as UC_toggle_auto
+  usecase "Set Auto-Serve Interval Time\n(set_auto_interval)" as UC_set_interval
+  usecase "View Performance Analytics\n(analytics_dashboard)" as UC_analytics
+  usecase "View Daily Staff Reports\n(staff_reports)" as UC_reports
+  usecase "Export PDF Report\n(export_reports_pdf)" as UC_export_pdf
+  usecase "Search & Filter Push Notification Logs\n(get_notification_logs)" as UC_get_logs
+  usecase "Trigger Test Push Notification\n(send_test_push)" as UC_test_push
+}
+
+' Student Mappings
+student --> UC_register
+student --> UC_verify_email
+student --> UC_resend_confirm
+student --> UC_dashboard
+student --> UC_queue_list
+student --> UC_join_queue
+student --> UC_student_status
+student --> UC_notifications
+student --> UC_profile_pic
+student --> UC_push_sub
+student --> UC_display
+
+' Staff Mappings
+staff --> UC_staff_home
+staff --> UC_control_dash
+staff --> UC_queue_status_api
+staff --> UC_serve
+staff --> UC_skip
+staff --> UC_pause
+staff --> UC_display
+
+' Admin is a specialized Staff Member who also inherits access to all Staff endpoints
+admin --|> staff
+admin --> UC_toggle_auto
+admin --> UC_set_interval
+admin --> UC_analytics
+admin --> UC_reports
+admin --> UC_export_pdf
+admin --> UC_get_logs
+admin --> UC_test_push
+@enduml

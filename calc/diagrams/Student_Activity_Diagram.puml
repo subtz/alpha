@@ -1,0 +1,109 @@
+@startuml
+start
+
+partition "Student Registration View" {
+  if (Is HTTP Method POST?) then (yes)
+    :Instantiate StudentRegistrationForm;
+    if (Form field validations pass?) then (yes)
+      :Extract registration_number & email;
+      if (Does Email already exist in User Model?) then (yes)
+        :Add Email error to form;
+        :Render register.html with validation errors;
+        stop
+      else (no)
+        if (Registration number is not in active ValidStudent?) then (yes)
+          :Add Registration error to form;
+          :Render register.html with validation errors;
+          stop
+        else (no)
+          if (StudentProfile already exists for registration number?) then (yes)
+            :Add Account already exists error to form;
+            :Render register.html with validation errors;
+            stop
+          else (no)
+            :Save user object with is_active = False;
+            :Create StudentProfile mapping User to ValidStudent;
+            :Build verify_email url with uidb64 and token;
+            :Attempt to send verification email (SMTP);
+            if (Email send succeeded?) then (yes)
+              :Success message;
+              :Render verify_email_sent.html;
+              stop
+            else (no)
+              :Log exception detail;
+              :Delete raw inactive User object (Cleanup);
+              :Render register.html with failure message;
+              stop
+            endif
+          endif
+        endif
+      endif
+    else (no validations fail)
+      :Render register.html with errors;
+      stop
+    endif
+  else (no)
+    :Instantiate blank StudentRegistrationForm;
+    :Render register.html;
+  endif
+}
+
+partition "Join Queue View" {
+  :Student requests to join queue_id;
+  :Fetch Queue object;
+  if (Is queue.is_paused == True?) then (yes)
+    :Return HttpResponse("Queue is paused");
+    stop
+  else (no)
+    :Fetch StudentProfile for logged-in user;
+    if (Is profile missing?) then (yes)
+      :Return HttpResponse("Student profile missing");
+      stop
+    else (no)
+      :Get student year_of_study;
+      if (Is year_of_study not in Queue's allowed_years?) then (yes)
+        :Return HttpResponse("You are not allowed to join this queue.");
+        stop
+      else (no)
+        :Check if QueueEntry exists with status 'waiting' or 'serving' for user's email;
+        if (Existing active entry exists?) then (yes)
+          :Fetch waiting entries list;
+          :Calculate student position and ETA;
+          :Render queue_join_success.html ("Already joined" notification);
+          stop
+        else (no)
+          :Get or create Customer record for email;
+          :Count entries in queue with status 'waiting' or 'serving';
+          if (Count >= queue.max_capacity?) then (yes)
+            :Return HttpResponse("Queue is full");
+            stop
+          else (no)
+            :Fetch first active Service instance;
+            if (No active Service available?) then (yes)
+              :Return HttpResponse("No active service available.");
+              stop
+            else (no)
+              partition "Database Transaction [Atomic]" {
+                :Select and Lock Queue Row;
+                :Increment queue.current_ticket_number;
+                :Save locked Queue Row;
+                :Create QueueEntry (status='waiting', position);
+              }
+              note right: IntegrityError triggers a retry\nof the same atomic block
+              :Fetch all waiting entries in queue;
+              :Calculate average waiting service time and position;
+              :Send push notification ("Joined queue");
+              if (Is waiting count in queue exactly 1?) then (yes)
+                :Send "You are next in line!" notification;
+              else (no)
+              endif
+              :Render queue_join_success.html with ticket details;
+            endif
+          endif
+        endif
+      endif
+    endif
+  endif
+}
+stop
+@enduml

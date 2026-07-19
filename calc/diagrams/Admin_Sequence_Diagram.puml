@@ -1,0 +1,81 @@
+@startuml
+autonumber
+actor Admin
+participant "Admin Console View" as Client
+participant "Django App Server\n(views.py)" as App
+database Database as DB
+
+== 1. Toggle Auto-Serve Mode ==
+Admin -> Client: Click Toggle Auto Mode
+Client -> App: POST /staff/auto-mode/toggle/<queue_id>/
+activate App
+App -> DB: Queue.objects.get(id=queue_id)
+DB --> App: Queue Instance
+
+alt is_auto_mode_enabled is False and auto_serve_interval <= 0
+    alt request is AJAX
+        App --> Client: JsonResponse(error='auto_interval_required', status=400)
+    else regular HTTP request
+        App --> Client: Redirect to queue_control_dashboard
+    end
+else valid conditions to toggle
+    App -> App: Toggle is_auto_mode_enabled
+    alt is_auto_mode_enabled is True
+        App -> App: set last_auto_served_at = now
+    end
+    App -> DB: Save Queue
+    DB --> App: Success
+    alt request is AJAX
+        App --> Client: JsonResponse(auto_mode_enabled, queue_paused, auto_serve_interval)
+    else regular HTTP request
+        App --> Client: Redirect to queue_control_dashboard
+    end
+end
+deactivate App
+
+== 2. Modify Auto-Serve Intervalling ==
+Admin -> Client: Enter Interval Value (mins) & Submit
+Client -> App: POST /staff/auto-mode/interval/<queue_id>/
+activate App
+App -> DB: Queue.objects.get(id=queue_id)
+DB --> App: Queue Instance
+
+alt interval value is integer > 0
+    App -> App: Update queue.auto_serve_interval
+    alt queue.is_auto_mode_enabled is True
+        App -> App: set last_auto_served_at = now
+    end
+    App -> DB: Save Queue
+    DB --> App: Success
+else interval <= 0 or parsing fails (TypeError, ValueError)
+    App -> App: Exception ignored (Pass)
+end
+App --> Client: Redirect to queue_control_dashboard
+deactivate App
+
+== 3. Auditing Notification Dispatch logs ==
+Admin -> Client: Access Notification Log Page with filters
+Client -> App: GET /staff/notification-logs/?student_name=Bob&status=success...
+activate App
+App -> DB: NotificationLog.objects.all()
+DB --> App: Log QuerySet
+
+alt student_name query parameter provided
+    App -> App: QuerySet.filter(user__username__icontains=student_name)
+end
+alt status parameter is 'success' or 'failure'
+    App -> App: QuerySet.filter(success=True / False)
+end
+alt start_date / end_date provided
+    App -> App: QuerySet.filter(timestamp__date__gte / lte)
+end
+
+App -> DB: Run aggregate queries (total_count, success_count)
+DB --> App: counts
+
+App -> DB: Paginate QuerySet (20 records per page)
+DB --> App: Paginated records
+
+App --> Client: JsonResponse(logs_data, pagination_details, counts)
+deactivate App
+@enduml
