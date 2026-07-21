@@ -24,7 +24,7 @@ partition "Serve Current Student (advance_queue)" {
   
   :Fetch list of remaining status='waiting' entries ordered by entered_at;
   while (For each entry in waiting list) is (has entry)
-    :Calculate tickets_ahead = position_index - 1;
+    :Sqmsulate tickets_ahead = position_index - 1;
     if (tickets_ahead == 0) then (yes)
       :Send push notification ("You are next in line!");
     elseif (tickets_ahead == 2) then (yes)

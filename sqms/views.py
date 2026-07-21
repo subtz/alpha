@@ -1253,6 +1253,7 @@ def staff_reports(request):
 
 @staff_member_required
 def export_reports_pdf(request):
+    styles = getSampleStyleSheet()
     today = timezone.localdate()
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="report_{today}.pdf"'
