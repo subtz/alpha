@@ -1,0 +1,426 @@
+{% extends 'sqms/base.html' %}
+{% load static %}
+
+{% block title %}
+Dashboard
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .profile-picture-link {
+        display: inline-block;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        padding: 0;
+    }
+
+    .modal-backdrop-custom {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+    }
+
+    .modal-backdrop-custom.open {
+        display: flex;
+    }
+
+    .profile-picture-modal {
+        background: #fff;
+        border-radius: 1rem;
+        width: min(100%, 520px);
+        max-width: 520px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        padding: 1.5rem;
+        position: relative;
+    }
+
+    .profile-picture-modal h4 {
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+
+    .profile-picture-modal .preview-image {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(13, 110, 253, 0.15);
+        margin-bottom: 1rem;
+    }
+
+    .profile-picture-modal .modal-error {
+        color: #d63384;
+        margin-top: 0.5rem;
+        min-height: 1.4em;
+    }
+
+    .profile-picture-modal .modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+</style>
+
+<div id="profile-picture-modal-backdrop" class="modal-backdrop-custom" aria-hidden="true">
+    <div class="profile-picture-modal" role="dialog" aria-modal="true" aria-labelledby="profile-picture-modal-title">
+        <h4 id="profile-picture-modal-title">Update Profile Picture</h4>
+        <div class="text-center">
+            <img id="profile-picture-modal-preview" class="preview-image" src="{% if student_profile.profile_picture %}{{ student_profile.profile_picture.url }}{% else %}{% static 'sqms/img/default-avatar.svg' %}{% endif %}" alt="Current profile picture preview">
+        </div>
+        <form id="profile-picture-modal-form">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="modal_profile_picture" class="form-label">Select a new image</label>
+                <input type="file" class="form-control" id="modal_profile_picture" name="profile_picture" accept="image/jpeg,image/png">
+                <div id="profile-picture-modal-error" class="modal-error"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="profile-picture-modal-cancel" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="profile-picture-modal-save" class="btn btn-primary" disabled>Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="container py-5">
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <h2 class="mb-3">
+                Dashboard
+            </h2>
+
+            <p class="text-muted">
+                Welcome back, {{ user.username }}!
+            </p>
+
+            {% if student_profile %}
+            <div class="mb-4">
+
+                <h5>
+                    Student Information
+                </h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3 text-center">
+                        <button type="button"
+                                id="open-profile-picture-modal"
+                                class="profile-picture-link d-inline-block open-profile-picture-modal"
+                                title="Change profile picture">
+                            {% if student_profile.profile_picture %}
+                                <img id="dashboard-profile-pic" src="{{ student_profile.profile_picture.url }}"
+                                    alt="Profile Picture"
+                                    class="img-fluid rounded-circle"
+                                    style="max-width: 140px;">
+                            {% else %}
+                                <img id="dashboard-profile-pic" src="{% static 'sqms/img/default-avatar.svg' %}"
+                                    alt="Profile Picture"
+                                    class="img-fluid rounded-circle"
+                                    style="max-width: 140px;">
+                            {% endif %}
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-primary mt-3 open-profile-picture-modal"
+                                title="Change profile picture">
+                            Change profile picture
+                        </button>
+                    </div>
+                    <div class="col-md-9">
+                        <table class="table table-bordered">
+
+                    <tr>
+                        <th>Registration Number</th>
+                        <td>
+                            {{ student_profile.valid_student.registration_number }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Full Name</th>
+                        <td>
+                            {{ student_profile.valid_student.full_name }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Year Of Study</th>
+                        <td>
+                            {{ student_profile.valid_student.year_of_study }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Email</th>
+                        <td>
+                            {{ user.email }}
+                        </td>
+                    </tr>
+
+                </table>
+                    </div>
+                </div>
+
+                <div id="student-queue-status" class="mt-4">
+                    <h5>Current Queue Status</h5>
+                    <div id="queue-status-card" class="card p-3">
+                        <div id="queue-status-loading">Loading queue status...</div>
+                        <div id="queue-status-content" style="display:none;">
+                            <p><strong>Queue:</strong> <span id="dashboard-queue-name"></span></p>
+                            <p><strong>Ticket:</strong> <span id="dashboard-ticket-number"></span></p>
+                            <p><strong>Position:</strong> <span id="dashboard-position"></span></p>
+                            <p><strong>Tickets ahead:</strong> <span id="dashboard-tickets-ahead"></span></p>
+                            <p><strong>ETA:</strong> <span id="dashboard-eta"></span> minutes</p>
+                            <p><strong>Status:</strong> <span id="dashboard-status"></span></p>
+                            <p><strong>Notification Permission:</strong> <span id="dashboard-notification-status"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-2">
+
+                <a href="{% url 'queue_list' %}"
+                   class="btn btn-primary">
+                    View Queues
+                </a>
+
+                <a href="{% url 'notifications' %}"
+                   class="btn btn-success">
+                    My Queue Status
+                </a>
+
+                <a href="{% url 'analytics_dashboard' %}"
+                   class="btn btn-secondary">
+                    Analytics
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+function updateDashboardStatus() {
+    fetch('{% url "student_queue_status" %}', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const loading = document.getElementById('queue-status-loading');
+        const content = document.getElementById('queue-status-content');
+        loading.style.display = 'none';
+        content.style.display = 'block';
+
+        document.getElementById('dashboard-queue-name').textContent = data.queue_name || 'N/A';
+        document.getElementById('dashboard-ticket-number').textContent = data.ticket_number || 'N/A';
+        document.getElementById('dashboard-position').textContent = data.position || '-';
+        document.getElementById('dashboard-tickets-ahead').textContent = data.tickets_ahead !== undefined ? data.tickets_ahead : '-';
+        document.getElementById('dashboard-eta').textContent = data.eta_minutes !== undefined ? data.eta_minutes : '-';
+        document.getElementById('dashboard-status').textContent = data.in_queue ? (data.is_being_served ? 'Serving' : 'Waiting') : 'Not in queue';
+        document.getElementById('dashboard-notification-status').textContent = Notification.permission;
+    })
+    .catch(() => {
+        const loading = document.getElementById('queue-status-loading');
+        loading.textContent = 'Unable to load queue status.';
+    });
+}
+
+updateDashboardStatus();
+setInterval(updateDashboardStatus, 3000);
+</script>
+
+<script>
+(function() {
+    const modalTriggers = document.querySelectorAll('.open-profile-picture-modal');
+    const backdrop = document.getElementById('profile-picture-modal-backdrop');
+    const cancelButton = document.getElementById('profile-picture-modal-cancel');
+    const saveButton = document.getElementById('profile-picture-modal-save');
+    const fileInput = document.getElementById('modal_profile_picture');
+    const previewImage = document.getElementById('profile-picture-modal-preview');
+    const errorContainer = document.getElementById('profile-picture-modal-error');
+    const dashboardImage = document.getElementById('dashboard-profile-pic');
+    const navbarImage = document.getElementById('navbar-profile-pic');
+    const uploadUrl = '{% url "update_profile_picture" %}';
+    const maxFileSize = 2 * 1024 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/png'];
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+    }
+
+    function openModal() {
+        backdrop.classList.add('open');
+        backdrop.setAttribute('aria-hidden', 'false');
+        errorContainer.textContent = '';
+        saveButton.disabled = true;
+        saveButton.textContent = 'Save';
+        fileInput.value = '';
+        previewImage.src = dashboardImage.src;
+        fileInput.focus();
+    }
+
+    function closeModal() {
+        backdrop.classList.remove('open');
+        backdrop.setAttribute('aria-hidden', 'true');
+        errorContainer.textContent = '';
+        saveButton.disabled = true;
+        fileInput.value = '';
+        previewImage.src = dashboardImage.src;
+    }
+
+    function validateFile(file) {
+        if (!file) {
+            return 'Please select a file.';
+        }
+        if (!allowedTypes.includes(file.type)) {
+            return 'Only JPG and PNG images are allowed.';
+        }
+        if (file.size > maxFileSize) {
+            return 'File size must be under 2MB.';
+        }
+        return '';
+    }
+
+    function handleFileChange() {
+        const file = fileInput.files[0];
+        const error = validateFile(file);
+        errorContainer.textContent = error;
+        saveButton.disabled = !!error;
+
+        if (file && !error) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewImage.src = dashboardImage.src;
+        }
+    }
+
+    function parseServerErrors(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const errorEls = doc.querySelectorAll('.text-danger, .modal-error');
+        if (errorEls.length) {
+            return Array.from(errorEls).map(el => el.textContent.trim()).filter(Boolean).join(' ');
+        }
+        return 'Unable to upload image. Please try again.';
+    }
+
+    async function submitForm() {
+        const file = fileInput.files[0];
+        const validationError = validateFile(file);
+        if (validationError) {
+            errorContainer.textContent = validationError;
+            saveButton.disabled = true;
+            return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
+        errorContainer.textContent = '';
+
+        const formData = new FormData();
+        formData.append('profile_picture', file);
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+
+        try {
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
+                credentials: 'same-origin',
+                redirect: 'follow'
+            });
+
+            const text = await response.text();
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (error) {
+                json = null;
+            }
+
+            if (response.ok && json && json.success) {
+                const imageUrl = json.image_url;
+                dashboardImage.src = imageUrl;
+                if (navbarImage) {
+                    navbarImage.src = imageUrl;
+                }
+                previewImage.src = imageUrl;
+                closeModal();
+            } else {
+                if (json && json.errors) {
+                    const messages = [];
+                    Object.values(json.errors).forEach(arr => {
+                        if (Array.isArray(arr)) {
+                            messages.push(...arr);
+                        } else if (typeof arr === 'string') {
+                            messages.push(arr);
+                        }
+                    });
+                    errorContainer.textContent = messages.join(' ');
+                } else if (json && json.error) {
+                    errorContainer.textContent = json.error;
+                } else {
+                    errorContainer.textContent = parseServerErrors(text);
+                }
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save';
+            }
+        } catch (err) {
+            errorContainer.textContent = 'Upload failed. Please try again.';
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save';
+        }
+    }
+
+    modalTriggers.forEach(trigger => trigger.addEventListener('click', openModal));
+    cancelButton.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) {
+            closeModal();
+        }
+    });
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && backdrop.classList.contains('open')) {
+            closeModal();
+        }
+    });
+    fileInput.addEventListener('change', handleFileChange);
+    saveButton.addEventListener('click', submitForm);
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'sqms/base.html' %}
+
+{% block title %}
+Queue Entry Confirmed
+{% endblock %}
+
+{% block head %}
+<style>
+
+.success-card{
+    max-width:650px;
+    margin:50px auto;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--box-shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.success-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, var(--success-color) 0%, var(--accent-color) 100%);
+}
+
+.ticket-box{
+    background: #fafafa;
+    border: 1px solid var(--border-color);
+    border-top: 3px solid var(--accent-color);
+    border-radius: var(--border-radius-md);
+    padding: 30px;
+    box-shadow: var(--box-shadow-sm);
+}
+
+.ticket-number{
+    font-family: "Georgia", serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    letter-spacing: 1px;
+    text-shadow: 0 1px 3px rgba(11,36,71,0.1);
+}
+
+.position-box{
+    background: #e6f4ea;
+    border-left: 5px solid var(--success-color);
+    border-radius: var(--border-radius-sm);
+    padding: 22px;
+    box-shadow: var(--box-shadow-sm);
+}
+
+.position-box h5, .eta-box h5 {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.eta-box{
+    background: #fffbeb;
+    border-left: 5px solid var(--accent-color);
+    border-radius: var(--border-radius-sm);
+    padding: 22px;
+    box-shadow: var(--box-shadow-sm);
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+    <div class="card shadow success-card">
+
+        <div class="card-body text-center p-4">
+
+            <h1 class="text-success mb-3">
+                ✓ Successfully Joined Queue
+            </h1>
+
+            {% if message %}
+                <div class="alert alert-info">
+                    {{ message }}
+                </div>
+            {% endif %}
+
+            <div class="ticket-box mb-4">
+
+                <h4 class="mb-3">
+                    {{ queue.name }}
+                </h4>
+
+                <div class="ticket-number">
+                    {{ ticket_number }}
+                </div>
+
+                <p class="text-muted mt-2 mb-0">
+                    Your queue ticket number
+                </p>
+
+            </div>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+
+                    <div class="position-box h-100">
+
+                        <h5>
+                            Queue Position
+                        </h5>
+
+                        <h2 class="mb-0">
+                            {{ position }}
+                        </h2>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-6">
+
+                    <div class="eta-box h-100">
+
+                        <h5>
+                            Estimated Wait
+                        </h5>
+
+                        <h2 class="mb-0">
+                            {{ eta_minutes }} min
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="mt-4">
+
+                <a href="{% url 'notifications' %}"
+                   class="btn btn-success me-2">
+                    Track My Position
+                </a>
+
+                <a href="{% url 'dashboard' %}"
+                   class="btn btn-primary">
+                    Dashboard
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

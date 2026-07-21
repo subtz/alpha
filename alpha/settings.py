@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'cloudinary',
     'django_extensions',
-    'calc',
+    'sqms',
 ]
 
 MIDDLEWARE = [
@@ -58,8 +58,8 @@ TEMPLATES = [
             'django.template.context_processors.request',
             'django.contrib.auth.context_processors.auth',
             'django.contrib.messages.context_processors.messages',
-            'calc.context_processors.student_profile',
-            'calc.context_processor.vapid_keys',
+            'sqms.context_processors.student_profile',
+            'sqms.context_processor.vapid_keys',
         ],
         },
     },

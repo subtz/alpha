@@ -44,7 +44,7 @@ SQMS is built using **Django** and handles everything from user administration t
 
 ## 2. Database Schema & Models
 
-Below is an overview of the core database entities defined in `calc/models.py`:
+Below is an overview of the core database entities defined in `sqms/models.py`:
 
 ```
                +-------------------+

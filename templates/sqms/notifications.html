@@ -1,0 +1,298 @@
+{% extends 'sqms/base.html' %}
+{% block title %}My Queue Status{% endblock %}
+
+{% block head %}
+<style>
+  .status-container {
+    max-width: 600px;
+    margin: 40px auto;
+  }
+  
+  #queue-status-card {
+    border-radius: var(--border-radius-lg) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--box-shadow-lg) !important;
+    position: relative;
+    overflow: hidden;
+    padding: 35px !important;
+  }
+  
+  #queue-status-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  }
+
+  .status-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+  }
+
+  #ticket-number {
+    font-family: "Georgia", serif;
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1.2;
+    margin-top: 4px;
+  }
+
+  #queue-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    margin-top: 4px;
+  }
+
+  #serving-banner {
+    display: none;
+    background: #e6f4ea !important;
+    border-left: 5px solid var(--success-color);
+    color: var(--success-color) !important;
+    padding: 18px;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    box-shadow: var(--box-shadow-sm);
+    animation: pulseGlow 2s infinite ease-in-out;
+  }
+
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(15, 118, 110, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0); }
+  }
+
+  #tickets-ahead {
+    font-family: "Georgia", serif;
+    font-size: 3.2rem;
+    font-weight: 800;
+    color: var(--primary-color) !important;
+    line-height: 1.1;
+    margin-top: 4px;
+  }
+
+  #eta-minutes {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 4px;
+  }
+
+  #warning-banner {
+    display: none;
+    background: #fffbeb !important;
+    border-left: 5px solid var(--accent-color);
+    color: var(--warning-color) !important;
+    padding: 14px;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 16px;
+    font-weight: 600;
+    box-shadow: var(--box-shadow-sm);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container status-container">
+  <h2 class="mb-4">My Queue Status</h2>
+
+  <div id="queue-status-card" class="card">
+    <div id="status-loading" style="color: var(--text-secondary); font-weight: 500;">
+      Checking your queue status...
+    </div>
+    <div id="status-content" style="display:none;">
+
+      <div id="not-in-queue" style="display:none;" class="text-center py-4">
+        <p class="text-muted mb-4" style="font-size: 16px;">You are not currently in any queue.</p>
+        <a href="{% url 'queue_list' %}" class="btn btn-primary px-4 py-2">
+          Join a Queue
+        </a>
+      </div>
+
+      <div id="in-queue" style="display:none;">
+        <div class="mb-4">
+          <span class="status-label">Ticket number</span>
+          <div id="ticket-number"></div>
+        </div>
+
+        <div class="mb-4">
+          <span class="status-label">Queue</span>
+          <div id="queue-name"></div>
+        </div>
+
+        <div id="serving-banner">
+          It's your turn! Please proceed to the service desk now.
+        </div>
+
+        <div id="waiting-info">
+          <div class="mb-4">
+            <span class="status-label">
+              Tickets ahead of you
+            </span>
+            <div id="tickets-ahead"></div>
+          </div>
+
+          <div class="mb-4">
+            <span class="status-label">
+              Estimated wait
+            </span>
+            <div id="eta-minutes"></div>
+          </div>
+
+          <div id="warning-banner">
+            Almost your turn — please be ready!
+          </div>
+
+          <div class="mt-4">
+            <span class="status-label">
+              Your position
+            </span>
+            <div id="position-bar"
+                 style="margin-top:12px;display:flex;
+                        gap:8px;flex-wrap:wrap;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary px-4 py-2">
+      Back to Dashboard
+    </a>
+  </div>
+</div>
+
+<script>
+const POLL_INTERVAL = 3000;
+let lastTicketsAhead = null;
+let notificationPermission = Notification.permission;
+
+if (notificationPermission === 'default') {
+  Notification.requestPermission().then(p => {
+    notificationPermission = p;
+  });
+}
+
+function showBrowserNotification(title, body) {
+  if (notificationPermission === 'granted') {
+    new Notification(title, {
+      body: body,
+      icon: '/static/sqms/img/default-avatar.svg'
+    });
+  }
+}
+
+function renderPositionBar(position, total) {
+  const bar = document.getElementById('position-bar');
+  bar.innerHTML = '';
+  const show = Math.min(total, 10);
+  for (let i = 1; i <= show; i++) {
+    const dot = document.createElement('div');
+    dot.style.cssText = `
+      width:32px;height:32px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:700;
+      background:${i < position ? '#dee2e6' :
+                  i === position ? 'var(--primary-color)' : '#e9ecef'};
+      color:${i === position ? 'white' : '#6c757d'};
+      border:${i === position ? '2px solid var(--accent-color)' : 'none'};
+      box-shadow:${i === position ? '0 2px 6px rgba(11,36,71,0.2)' : 'none'};
+    `;
+    dot.textContent = i;
+    bar.appendChild(dot);
+  }
+  if (total > 10) {
+    const more = document.createElement('div');
+    more.style.cssText = 'font-size:12px;color:#6c757d;align-self:center;';
+    more.textContent = '+' + (total - 10) + ' more';
+    bar.appendChild(more);
+  }
+}
+
+function updateStatus() {
+  fetch("{% url 'student_queue_status' %}", {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById('status-loading').style.display = 'none';
+    document.getElementById('status-content').style.display = 'block';
+
+    if (!data.in_queue) {
+      document.getElementById('not-in-queue').style.display = 'block';
+      document.getElementById('in-queue').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('not-in-queue').style.display = 'none';
+    document.getElementById('in-queue').style.display = 'block';
+    document.getElementById('ticket-number').textContent =
+      data.ticket_number;
+    document.getElementById('queue-name').textContent =
+      data.queue_name;
+
+    if (data.is_being_served) {
+      document.getElementById('serving-banner').style.display = 'block';
+      document.getElementById('waiting-info').style.display = 'none';
+      if (lastTicketsAhead !== 0) {
+        showBrowserNotification(
+          "It's your turn!",
+          "Please proceed to the service desk now."
+        );
+      }
+      lastTicketsAhead = 0;
+      return;
+    }
+
+    document.getElementById('serving-banner').style.display = 'none';
+    document.getElementById('waiting-info').style.display = 'block';
+    document.getElementById('tickets-ahead').textContent =
+      data.tickets_ahead;
+    document.getElementById('eta-minutes').textContent =
+      data.eta_minutes + ' min estimated wait';
+
+    const warningBanner = document.getElementById('warning-banner');
+    if (data.tickets_ahead <= 3 && data.tickets_ahead > 0) {
+      warningBanner.style.display = 'block';
+    } else {
+      warningBanner.style.display = 'none';
+    }
+
+    if (lastTicketsAhead !== null &&
+        lastTicketsAhead !== data.tickets_ahead) {
+      if (data.tickets_ahead === 1) {
+        showBrowserNotification(
+          'Almost your turn!',
+          'You are next in line. Get ready.'
+        );
+      } else if (data.tickets_ahead === 3) {
+        showBrowserNotification(
+          'Getting close!',
+          'Only 3 tickets ahead of you.'
+        );
+      }
+    }
+    lastTicketsAhead = data.tickets_ahead;
+
+    renderPositionBar(data.position, data.position + data.tickets_ahead);
+  })
+  .catch(err => {
+    console.error('Queue status fetch failed:', err);
+  });
+}
+
+updateStatus();
+setInterval(updateStatus, POLL_INTERVAL);
+</script>
+{% endblock %}
