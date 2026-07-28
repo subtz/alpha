@@ -1307,3 +1307,13 @@ def send_test_push(request):
         "messages": [{"role": "user", "content": "Test notification from SQMS"}]
     }
     return JsonResponse(call_groq_api(payload))
+
+#temporary for use just after we introduced the new database
+from django.http import HttpResponse
+from django.contrib.auth.models import User
+
+def create_superuser(request):
+    if not User.objects.filter(username='admin').exists():
+        User.objects.create_superuser('admin', 'admin@example.com', 'admin1234')
+        return HttpResponse("Superuser created!")
+    return HttpResponse("Already exists.")
