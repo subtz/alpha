@@ -137,7 +137,7 @@ urlpatterns = [
     path('staff/send-test-push/', views.send_test_push, name='send_test_push'),
 
     path('staff/notification-logs/', views.get_notification_logs, name='get_notification_logs'),
-]
-
 #temporary for use just after we introduced the new database
 path('setup-admin/', views.create_superuser),
+]
+
